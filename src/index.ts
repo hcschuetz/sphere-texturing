@@ -1,5 +1,6 @@
 import * as B from "babylonjs";
 import * as T from "./triangulation";
+import { slerp } from "./utils";
 
 const MB = B.MeshBuilder;
 
@@ -124,8 +125,6 @@ function createScene() {
   const red4 = red.toColor4();
   const blue = B.Color3.Blue();
   const blue4 = blue.toColor4();
-  const magenta = B.Color3.Magenta();
-  const magenta4 = magenta.toColor4();
   const mat = (color: B.Color3) =>
     createStandardMaterial("mat", {diffuseColor: color}, scene);
 
@@ -148,21 +147,6 @@ function createScene() {
   T.evenGeodesics(0, n, 20).forEach(points => {
     B.CreateLines("geodesic", {points, colors: points.map(() => blue4)}, scene);
   });
-
-  showTriangulation({
-    n,
-    triangulation: T.interpolateTriangulations(
-      T.onParallels(0), T.onEvenGeodesics(0), 0.5, B.Vector3.Lerp,
-    ),
-    vertexMaterial: mat(magenta),
-    // edgeColor: magenta4,
-  }, scene);
-  showTriangulation({
-    n,
-    triangulation: T.sineBased,
-    vertexMaterial: mat(B.Color3.Gray()),
-    edgeColor: B.Color3.Gray().toColor4(),
-  }, scene)
 
   return scene;
 }
