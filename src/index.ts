@@ -53,14 +53,11 @@ function showTriangulation(
   const vertices: B.Vector3[] = [];
   const triangles: number[] = [];
 
-  T.driver<number>(n, triangulation, {
-    emitVertex(name, p) {
-      const result = vertices.length;
-      vertices.push(p);
+  const gen = T.driver<number>(n, triangulation, {
+    emitVertex(name, v) {
       if (vertexMaterial) {
-        smallSphere(name, p, vertexMaterial, scene);
+        smallSphere(name, vertices[v], vertexMaterial, scene);
       }
-      return result;
     },
     emitEdge(name, v1, v2) {
       if (edgeColor) {
@@ -76,6 +73,10 @@ function showTriangulation(
       }
     },
   });
+
+  for (let out = gen.next(); !out.done; out = gen.next(vertices.length - 1)) {
+    vertices.push(out.value.p);
+  }
 
   const customMesh = new B.Mesh("custom", scene);
   if (faceMaterial) {
@@ -117,48 +118,51 @@ function createScene() {
     }, scene);
   });
 
-  const n = 8;
+  const n = 6;
 
-  const colors: B.Color3[] = [
-    new B.Color3(0, 1, 1),
-    new B.Color3(1, 0, 1),
-    new B.Color3(1, 1, 0),
-  ]
+  const red = B.Color3.Red();
+  const red4 = red.toColor4();
+  const blue = B.Color3.Blue();
+  const blue4 = blue.toColor4();
+  const magenta = B.Color3.Magenta();
+  const magenta4 = magenta.toColor4();
+  const mat = (color: B.Color3) =>
+    createStandardMaterial("mat", {diffuseColor: color}, scene);
 
-  for (const rotation of [0]) {
-    const color = colors[rotation];
     showTriangulation({
-      n,
-      triangulation: T.sines,
-      vertexMaterial: createStandardMaterial("mat." + rotation, {
-        diffuseColor: B.Color3.Gray(),
-      }, scene),
-      edgeColor: B.Color3.Gray().toColor4()
-    }, scene);
-    showTriangulation({
-      n,
-      triangulation: T.sineBased,
-      vertexMaterial: createStandardMaterial("mat." + rotation, {
-        diffuseColor: B.Color3.White(),
-      }, scene),
-      edgeColor: B.Color3.White().toColor4()
-    }, scene);
-    const gray4 = B.Color3.Gray().toColor4();
-    T.rays(n, T.sineBased).forEach((ray, i) => {
-      MB.CreateLines(`ray[${i}]`, {
-        points: ray,
-        colors: ray.map(() => gray4)
-      }, scene);
-    });
+    n,
+    triangulation: T.onParallels(0),
+    vertexMaterial: mat(red),
+    // edgeColor: red.toColor4(),
+  }, scene);
+  T.parallels(0, n, 20).forEach(points => {
+    B.CreateLines("geodesic", {points, colors: points.map(() => red4)}, scene);
+  });
 
-    const color4 = color.toColor4();
-    false && T.evenGeodesics(rotation, n, 20).forEach(line => {
-      MB.CreateLines("geodesic." + rotation, {
-        points: line,
-        colors: line.map(() => color4),
-      }, scene);
-    });
-  }
+  showTriangulation({
+    n,
+    triangulation: T.onEvenGeodesics(0),
+    vertexMaterial: mat(blue),
+    // edgeColor: blue.toColor4(),
+  }, scene);
+  T.evenGeodesics(0, n, 20).forEach(points => {
+    B.CreateLines("geodesic", {points, colors: points.map(() => blue4)}, scene);
+  });
+
+  showTriangulation({
+    n,
+    triangulation: T.interpolateTriangulations(
+      T.onParallels(0), T.onEvenGeodesics(0), 0.5, B.Vector3.Lerp,
+    ),
+    vertexMaterial: mat(magenta),
+    // edgeColor: magenta4,
+  }, scene);
+  showTriangulation({
+    n,
+    triangulation: T.sineBased,
+    vertexMaterial: mat(B.Color3.Gray()),
+    edgeColor: B.Color3.Gray().toColor4(),
+  }, scene)
 
   return scene;
 }
