@@ -1,0 +1,16 @@
+{
+  "name": "test-babylon",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "start": "vite"
+  },
+  "author": "Heribert Schütz",
+  "license": "MIT",
+  "dependencies": {
+    "babylonjs": "^6.34.1"
+  },
+  "devDependencies": {
+    "vite": "^5.0.10"
+  }
+}
