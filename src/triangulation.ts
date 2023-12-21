@@ -83,7 +83,30 @@ export const flat: Triangulation = function*(n) {
     }
   }
 }
+
+export const flatLines = (n: number, resolution: number): Vector3[][] => {
+  const [X, Y, Z] = axes;
+  return subdivide(0, 1, n).map(i => {
+    const XY = Vector3.Lerp(X, Y, i);
+    const ZY = Vector3.Lerp(Z, Y, i);
+    return subdivide(0, 1, resolution).map(j =>
+      Vector3.Lerp(XY, ZY, j)
+    );
+  });
+}
+
 export const geodesic = mapTriangulation(flat, v => v.normalize());
+
+export const geodesics = (n: number, resolution: number): Vector3[][] => {
+  const [X, Y, Z] = axes;
+  return subdivide(0, 1, n).map(i => {
+    const XY = Vector3.Lerp(X, Y, i).normalize();
+    const ZY = Vector3.Lerp(Z, Y, i).normalize();
+    return subdivide(0, 1, resolution).map(j =>
+      slerp(XY, ZY, j)
+    );
+  });
+}
 
 export const sines: Triangulation = function*(n) {
   for (let i = 0; i <= n; i++) {
