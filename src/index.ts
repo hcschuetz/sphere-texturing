@@ -93,6 +93,32 @@ function showTriangulation(
 
 }
 
+class MotionController {
+  tFrom = 0;
+  tTo = 0;
+  from = 0;
+  to = 0;
+  value = 0;
+  initStep(stepSize: number, duration: number): void {
+    this.from = this.to;
+    this.to += stepSize;
+    const now = Date.now();
+    this.tFrom = now;
+    this.tTo = now + duration;
+  }
+  isMoving(): boolean {
+    return this.to !== this.value;
+  }
+  current(): number {
+    const now = Math.min(this.tTo, Date.now());
+    return this.value =
+      (this.from * (this.tTo - now) + this.to * (now - this.tFrom)) /
+      (this.tTo - this.tFrom);
+  }
+};
+
+const rotationController = new MotionController();
+
 function createScene() {
   const scene = new B.Scene(engine);
 
@@ -121,31 +147,35 @@ function createScene() {
 
   const n = 6;
 
-  const red = B.Color3.Red();
-  const red4 = red.toColor4();
-  const blue = B.Color3.Blue();
-  const blue4 = blue.toColor4();
+  const cyan = B.Color3.Teal();
+  const cyan4 = cyan.toColor4();
+  const magenta = B.Color3.Magenta();
+  const magenta4 = magenta.toColor4();
+  const yellow = B.Color3.Yellow();
+  const yellow4 = yellow.toColor4();
+
   const mat = (color: B.Color3) =>
     createStandardMaterial("mat", {diffuseColor: color}, scene);
-
-    showTriangulation({
-    n,
-    triangulation: T.onParallels(0),
-    vertexMaterial: mat(red),
-    // edgeColor: red.toColor4(),
-  }, scene);
-  T.parallels(0, n, 20).forEach(points => {
-    B.CreateLines("geodesic", {points, colors: points.map(() => red4)}, scene);
-  });
 
   showTriangulation({
     n,
     triangulation: T.onEvenGeodesics(0),
-    vertexMaterial: mat(blue),
-    // edgeColor: blue.toColor4(),
+    vertexMaterial: mat(magenta),
+    // edgeColor: red.toColor4(),
   }, scene);
-  T.evenGeodesics(0, n, 20).forEach(points => {
-    B.CreateLines("geodesic", {points, colors: points.map(() => blue4)}, scene);
+  const geodesics = B.CreateLineSystem("geodesics1", {
+    lines: T.evenGeodesics(0, n, 20),
+    material: createStandardMaterial("lineMat", {
+      diffuseColor: magenta,
+      emissiveColor: magenta,
+    }, scene),
+  }, scene);
+
+  scene.registerAfterRender(function () {
+    if (rotationController.isMoving()) {
+      geodesics.rotation = B.Vector3.Zero();
+      geodesics.rotate(new B.Vector3(1, 1, 1).normalize(), rotationController.current());
+    }
   });
 
   return scene;
@@ -156,3 +186,7 @@ const scene = createScene();
 engine.runRenderLoop(() => scene.render());
 
 window.addEventListener('resize', () => engine.resize());
+
+document.querySelector("#click-me")!.addEventListener("click", () => {
+  rotationController.initStep(TAU / 3, 1000);
+});
