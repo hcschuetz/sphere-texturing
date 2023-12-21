@@ -38,6 +38,7 @@ function showTriangulation(
   props: {
     n: number,
     triangulation: T.Triangulation,
+    parent?: B.Mesh,
     vertexMaterial?: B.Material,
     edgeColor?: B.Color4,
     faceMaterial?: B.Material,
@@ -47,6 +48,7 @@ function showTriangulation(
   const {
     n,
     triangulation,
+    parent,
     vertexMaterial,
     edgeColor,
     faceMaterial,
@@ -55,18 +57,24 @@ function showTriangulation(
   const vertices: B.Vector3[] = [];
   const triangles: number[] = [];
 
+  function linkToParent(mesh: B.Mesh) {
+    if (parent) {
+      mesh.parent = parent;
+    }
+  }
+
   const gen = T.driver<number>(n, triangulation, {
     emitVertex(name, v) {
       if (vertexMaterial) {
-        smallSphere(name, vertices[v], vertexMaterial, scene);
+        linkToParent(smallSphere(name, vertices[v], vertexMaterial, scene));
       }
     },
     emitEdge(name, v1, v2) {
       if (edgeColor) {
-        B.CreateLines(name, {
+        linkToParent(B.CreateLines(name, {
           points: [vertices[v1], vertices[v2]],
           colors: [edgeColor, edgeColor],
-        }, scene);
+        }, scene));
       }
     },
     emitFace(name, v1, v2, v3) {
@@ -80,18 +88,18 @@ function showTriangulation(
     vertices.push(out.value.p);
   }
 
-  const customMesh = new B.Mesh("custom", scene);
   if (faceMaterial) {
+    const customMesh = new B.Mesh("custom", scene);
+    linkToParent(customMesh);
     customMesh.material = faceMaterial;
+
+    const vertexData = new B.VertexData();
+    vertexData.positions = vertices.flatMap(v => [v.x, v.y, v.z]);
+    vertexData.indices = triangles;
+    vertexData.normals = vertexData.positions;
+  
+    vertexData.applyToMesh(customMesh);
   }
-
-  const vertexData = new B.VertexData();
-  vertexData.positions = vertices.flatMap(v => [v.x, v.y, v.z]);
-  vertexData.indices = triangles;
-  vertexData.normals = vertexData.positions;
-
-  vertexData.applyToMesh(customMesh);
-
 }
 
 const rotationController = new MotionController();
@@ -125,27 +133,26 @@ function createScene() {
   const n = 6;
 
   const cyan = B.Color3.Teal();
-  const cyan4 = cyan.toColor4();
   const magenta = B.Color3.Magenta();
-  const magenta4 = magenta.toColor4();
   const yellow = B.Color3.Yellow();
-  const yellow4 = yellow.toColor4();
 
   const mat = (color: B.Color3) =>
     createStandardMaterial("mat", {diffuseColor: color}, scene);
 
-  showTriangulation({
-    n,
-    triangulation: T.onEvenGeodesics,
-    vertexMaterial: mat(magenta),
-    // edgeColor: red.toColor4(),
-  }, scene);
   const geodesics = B.CreateLineSystem("geodesics1", {
     lines: T.evenGeodesics(n, 20),
     material: createStandardMaterial("lineMat", {
       diffuseColor: magenta,
       emissiveColor: magenta,
     }, scene),
+  }, scene);
+
+  showTriangulation({
+    n,
+    triangulation: T.onEvenGeodesics,
+    parent: geodesics,
+    vertexMaterial: mat(magenta),
+    // edgeColor: red.toColor4(),
   }, scene);
 
   scene.registerAfterRender(function () {
