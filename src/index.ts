@@ -1,6 +1,7 @@
 import * as B from "babylonjs";
 import * as T from "./triangulation";
 import { slerp } from "./utils";
+import { MotionController } from "./utils";
 
 const MB = B.MeshBuilder;
 
@@ -92,30 +93,6 @@ function showTriangulation(
   vertexData.applyToMesh(customMesh);
 
 }
-
-class MotionController {
-  tFrom = 0;
-  tTo = 0;
-  from = 0;
-  to = 0;
-  value = 0;
-  initStep(stepSize: number, duration: number): void {
-    this.from = this.to;
-    this.to += stepSize;
-    const now = Date.now();
-    this.tFrom = now;
-    this.tTo = now + duration;
-  }
-  isMoving(): boolean {
-    return this.to !== this.value;
-  }
-  current(): number {
-    const now = Math.min(this.tTo, Date.now());
-    return this.value =
-      (this.from * (this.tTo - now) + this.to * (now - this.tFrom)) /
-      (this.tTo - this.tFrom);
-  }
-};
 
 const rotationController = new MotionController();
 

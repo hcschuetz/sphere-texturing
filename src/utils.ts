@@ -23,3 +23,35 @@ export const axes: Vector3[] = [
 ];
 
 export type Vertex = { i: number; j: number; p: Vector3; };
+
+export class MotionController {
+  tFrom = 0;
+  tTo = 0;
+  from = 0;
+  to = 0;
+  value = 0;
+  initStep(stepSize: number, duration: number): void {
+    this.from = this.to;
+    this.to += stepSize;
+    const now = Date.now();
+    this.tFrom = now;
+    this.tTo = now + duration;
+  }
+  isMoving(): boolean {
+    return this.to !== this.value;
+  }
+  current(): number {
+    const now = Math.min(this.tTo, Date.now());
+    let weightFrom = this.tTo - now;
+    let weightTo = now - this.tFrom;
+
+    // easing:
+    weightFrom = weightFrom ** 2;
+    weightTo = weightTo ** 2;
+
+    return this.value =
+      (this.from * weightFrom + this.to * weightTo) / (weightFrom + weightTo);
+  }
+}
+;
+
