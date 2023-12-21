@@ -1,5 +1,5 @@
 import { Vector3 } from "babylonjs";
-import { Vertex, TAU, frac, rotateTriplet, subdivide, axes, slerp } from "./utils";
+import { Vertex, TAU, frac, subdivide, axes, slerp } from "./utils";
 
 export type Triangulation = (
   n: number,
@@ -12,7 +12,7 @@ const mapTriangulation = (tr: Triangulation, f: (v: Vector3) => Vector3): Triang
     }
   }
 
-export const onParallels = (rotation: number): Triangulation => function*(n: number) {
+export const onParallels: Triangulation = function*(n: number) {
   for (let i = 0; i <= n; i++) {
     const alpha = i/n * TAU/4
     const sin_alpha = Math.sin(alpha);
@@ -21,16 +21,16 @@ export const onParallels = (rotation: number): Triangulation => function*(n: num
       const beta = frac(j, n - i) * TAU/4;
       const sin_beta = Math.sin(beta);
       const cos_beta = Math.cos(beta);
-      yield {i, j, p: new Vector3(...rotateTriplet(rotation, [
+      yield {i, j, p: new Vector3(
         cos_alpha * cos_beta,
         sin_alpha,
         cos_alpha * sin_beta
-      ]))};
+      )};
     }
   }
 }
 
-export const parallels = (rotation: number, n: number, resolution: number): Vector3[][] => {
+export const parallels = (n: number, resolution: number): Vector3[][] => {
   return subdivide(0, 1, n).map(i => {
     const alpha = i * TAU/4
     const sin_alpha = Math.sin(alpha);
@@ -39,33 +39,31 @@ export const parallels = (rotation: number, n: number, resolution: number): Vect
       const beta = j * TAU/4;
       const sin_beta = Math.sin(beta);
       const cos_beta = Math.cos(beta);
-      return new Vector3(...rotateTriplet(rotation, [
+      return new Vector3(
         cos_alpha * cos_beta,
         sin_alpha,
         cos_alpha * sin_beta
-      ]));
-    })
+      );
+    });
   })
 }
 
-export const onEvenGeodesics = (rotation: number): Triangulation => {
-  const [A, B, C] = rotateTriplet(rotation, axes);
-  return function*(n) {
-    for (let i = 0; i <= n; i++) {
-      const AB = slerp(A, B, i/n);
-      const CB = slerp(C, B, i/n);
-      for (let j = 0; j <= n - i; j++) {
-        yield{i, j, p: slerp(AB, CB, frac(j, n - i))};
-      }
+export const onEvenGeodesics: Triangulation = function*(n) {
+  const [X, Y, Z] = axes;
+  for (let i = 0; i <= n; i++) {
+    const AB = slerp(X, Y, i/n);
+    const CB = slerp(Z, Y, i/n);
+    for (let j = 0; j <= n - i; j++) {
+      yield{i, j, p: slerp(AB, CB, frac(j, n - i))};
     }
   }
 }
 
-export const evenGeodesics = (rotation: number, n: number, resolution: number): Vector3[][] => {
-  const [A, B, C] = rotateTriplet(rotation, axes);
+export const evenGeodesics = (n: number, resolution: number): Vector3[][] => {
+  const [X, Y, Z] = axes;
   return subdivide(0, 1, n).map(i => {
-    const XY = slerp(A, B, i);
-    const ZY = slerp(C, B, i);
+    const XY = slerp(X, Y, i);
+    const ZY = slerp(Z, Y, i);
     return subdivide(0, 1, resolution).map(j =>
       slerp(XY, ZY, j)
     );

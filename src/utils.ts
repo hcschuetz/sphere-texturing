@@ -22,7 +22,4 @@ export const axes: Vector3[] = [
   new Vector3(0, 0, 1),
 ];
 
-export const rotateTriplet = <T>(steps: number, [x, y, z]: T[]) =>
-  [[x, y, z], [y, z, x], [z, x, y]][steps];
-
 export type Vertex = { i: number; j: number; p: Vector3; };

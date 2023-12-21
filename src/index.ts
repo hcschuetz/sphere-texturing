@@ -159,12 +159,12 @@ function createScene() {
 
   showTriangulation({
     n,
-    triangulation: T.onEvenGeodesics(0),
+    triangulation: T.onEvenGeodesics,
     vertexMaterial: mat(magenta),
     // edgeColor: red.toColor4(),
   }, scene);
   const geodesics = B.CreateLineSystem("geodesics1", {
-    lines: T.evenGeodesics(0, n, 20),
+    lines: T.evenGeodesics(n, 20),
     material: createStandardMaterial("lineMat", {
       diffuseColor: magenta,
       emissiveColor: magenta,
