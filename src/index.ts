@@ -226,7 +226,6 @@ const magentaMesh = new WithAuxLines(flatLines, flat, magenta, 0);
 const zip = <T, U, V>(f: (t: T, u: U) => V) => (ts: T[], us: U[]): V[] =>
   ts.map((t, i) => f(t, us[i]));
 
-const dur = 1500;
 const motions: [number, (current: number) => void][][] = [
   // TODO show a rounded box with wireframe and colored faces (planes),
   // edges (quarter cylinders), and corners (eighths of spheres)
@@ -236,17 +235,17 @@ const motions: [number, (current: number) => void][][] = [
     magentaMesh.lines = yellowMesh.lines = cyanMesh.lines = flatLines;
     magentaMesh.triangulation = yellowMesh.triangulation = cyanMesh.triangulation = flat;
   }],
-  [dur, lambda => magentaMesh.alpha = lambda]],
+  [1, lambda => magentaMesh.alpha = lambda]],
   // ***** flat *****
-  [[dur, lambda => {
+  [[1, lambda => {
     yellowMesh.alpha = Math.sqrt(lambda);
     rotateTo(yellowMesh, easeInOut(lambda));
   }]],
-  [[dur, lambda => {
+  [[1, lambda => {
     cyanMesh.alpha = Math.sqrt(lambda);
     rotateTo(cyanMesh, 1 + easeInOut(lambda));
   }]],
-  [[dur, lambda => {
+  [[1, lambda => {
     rotateTo(yellowMesh, 1 - easeInOut(lambda));
     rotateTo(cyanMesh, 2 + easeInOut(lambda));
     yellowMesh.alpha = Math.sqrt(1 - lambda);
@@ -254,14 +253,14 @@ const motions: [number, (current: number) => void][][] = [
   }]],
   // ***** flat => geodesic *****
   // TODO show rays
-  [[dur, lambda => {
+  [[1, lambda => {
     magentaMesh.alpha = 1;
     const lambda1 = easeInOut(lambda);
     magentaMesh.lines =
       zip(zip((from: V3, to: V3) => V3.Lerp(from, to, lambda1)))
       (flatLines, geodesics);
   }]],
-  [[dur, lambda => {
+  [[1, lambda => {
     const lambda1 = easeInOut(lambda);
     magentaMesh.triangulation =
       zip(zip((from: V3, to: V3) => V3.Lerp(from, to, lambda1)))
@@ -272,29 +271,29 @@ const motions: [number, (current: number) => void][][] = [
     cyanMesh.lines = yellowMesh.lines = magentaMesh.lines;
     cyanMesh.triangulation = yellowMesh.triangulation = magentaMesh.triangulation;
   }],
-  [dur, lambda => {
+  [1, lambda => {
     yellowMesh.alpha = Math.sqrt(lambda);
     rotateTo(yellowMesh, easeInOut(lambda));
   }]],
-  [[dur, lambda => {
+  [[1, lambda => {
     cyanMesh.alpha = Math.sqrt(lambda);
     rotateTo(cyanMesh, 1 + easeInOut(lambda));
   }]],
-  [[dur, lambda => {
+  [[1, lambda => {
     rotateTo(yellowMesh, 1 - easeInOut(lambda));
     rotateTo(cyanMesh, 2 + easeInOut(lambda));
     yellowMesh.alpha = Math.sqrt(1 - lambda);
     cyanMesh.alpha = Math.sqrt(1 - lambda);
   }]],
   // ***** geodesic => parallels *****
-  [[dur, lambda => {
+  [[1, lambda => {
     magentaMesh.alpha = 1;
     const lambda1 = easeInOut(lambda);
     magentaMesh.lines =
       zip(zip((from: V3, to: V3) => V3.Lerp(from, to, lambda1)))
       (geodesics, parallels);
   }]],
-  [[dur, lambda => {
+  [[1, lambda => {
     const lambda1 = easeInOut(lambda);
     magentaMesh.triangulation =
       zip(zip((from: V3, to: V3) => V3.Lerp(from, to, lambda1)))
@@ -305,29 +304,29 @@ const motions: [number, (current: number) => void][][] = [
     cyanMesh.lines = yellowMesh.lines = magentaMesh.lines;
     cyanMesh.triangulation = yellowMesh.triangulation = magentaMesh.triangulation;
   }],
-  [dur, lambda => {
+  [1, lambda => {
     yellowMesh.alpha = Math.sqrt(lambda);
     rotateTo(yellowMesh, easeInOut(lambda));
   }]],
-  [[dur, lambda => {
+  [[1, lambda => {
     cyanMesh.alpha = Math.sqrt(lambda);
     rotateTo(cyanMesh, 1 + easeInOut(lambda));
   }]],
-  [[dur, lambda => {
+  [[1, lambda => {
     rotateTo(yellowMesh, 1 - easeInOut(lambda));
     rotateTo(cyanMesh, 2 + easeInOut(lambda));
     yellowMesh.alpha = Math.sqrt(1 - lambda);
     cyanMesh.alpha = Math.sqrt(1 - lambda);
   }]],
   // ***** parallels => evenGeodesics *****
-  [[dur, lambda => {
+  [[1, lambda => {
     magentaMesh.alpha = 1;
     const lambda1 = easeInOut(lambda);
     magentaMesh.lines =
       zip(zip((from: V3, to: V3) => V3.Lerp(from, to, lambda1)))
       (parallels, evenGeodesics);
   }]],
-  [[dur, lambda => {
+  [[1, lambda => {
     const lambda1 = easeInOut(lambda);
     magentaMesh.triangulation =
       zip(zip((from: V3, to: V3) => V3.Lerp(from, to, lambda1)))
@@ -338,22 +337,22 @@ const motions: [number, (current: number) => void][][] = [
     cyanMesh.lines = yellowMesh.lines = magentaMesh.lines;
     cyanMesh.triangulation = yellowMesh.triangulation = magentaMesh.triangulation;
   }],
-  [dur, lambda => {
+  [1, lambda => {
     yellowMesh.alpha = Math.sqrt(lambda);
     rotateTo(yellowMesh, easeInOut(lambda));
   }]],
-  [[dur, lambda => {
+  [[1, lambda => {
     cyanMesh.alpha = Math.sqrt(lambda);
     rotateTo(cyanMesh, 1 + easeInOut(lambda));
   }]],
-  [[dur, lambda => {
+  [[1, lambda => {
     rotateTo(yellowMesh, 1 - easeInOut(lambda));
     rotateTo(cyanMesh, 2 + easeInOut(lambda));
     yellowMesh.alpha = Math.sqrt(1 - lambda);
     cyanMesh.alpha = Math.sqrt(1 - lambda);
   }]],
   // ***** evenGeodesics => flat *****
-  [[dur, lambda => {
+  [[1, lambda => {
     magentaMesh.alpha = 1;
     const lambda1 = easeInOut(lambda);
     magentaMesh.lines =
@@ -364,7 +363,7 @@ const motions: [number, (current: number) => void][][] = [
       (onEvenGeodesics, flat);
   }]],
   // ***** flat => sines *****
-  [[dur, lambda => {
+  [[1, lambda => {
     const lambda1 = easeInOut(lambda);
     magentaMesh.triangulation =
       zip(zip((from: V3, to: V3) => V3.Lerp(from, to, lambda1)))
@@ -375,11 +374,11 @@ const motions: [number, (current: number) => void][][] = [
     cyanMesh.lines = yellowMesh.lines = magentaMesh.lines;
     cyanMesh.triangulation = yellowMesh.triangulation = magentaMesh.triangulation;
   }],
-  [dur, lambda => {
+  [1, lambda => {
     yellowMesh.alpha = Math.sqrt(lambda);
     rotateTo(yellowMesh, easeInOut(lambda));
   }]],
-  [[dur, lambda => {
+  [[1, lambda => {
     cyanMesh.alpha = Math.sqrt(lambda);
     rotateTo(cyanMesh, 1 + easeInOut(lambda));
   }],
@@ -388,7 +387,7 @@ const motions: [number, (current: number) => void][][] = [
   }]],
   // ***** sines => sineBased *****
   // TODO show rays
-  [[dur, lambda => {
+  [[1, lambda => {
     const lambda1 = easeInOut(lambda);
     magentaMesh.triangulation =
       zip(zip((from: V3, to: V3) => V3.Lerp(from, to, lambda1)))
@@ -398,11 +397,11 @@ const motions: [number, (current: number) => void][][] = [
     cyanMesh.lines = yellowMesh.lines = magentaMesh.lines;
     cyanMesh.triangulation = yellowMesh.triangulation = magentaMesh.triangulation;
   }],
-  [dur, lambda => {
+  [1, lambda => {
     yellowMesh.alpha = Math.sqrt(lambda);
     rotateTo(yellowMesh, easeInOut(lambda));
   }]],
-  [[dur, lambda => {
+  [[1, lambda => {
     cyanMesh.alpha = Math.sqrt(lambda);
     rotateTo(cyanMesh, 1 + easeInOut(lambda));
   }],
@@ -414,11 +413,11 @@ const motions: [number, (current: number) => void][][] = [
     yellowMesh.lines = collapsedLines;
     yellowMesh.triangulation = geodesic;
   }],
-  [dur, lambda => {
+  [1, lambda => {
     yellowMesh.alpha = lambda;
   }]],
   // ***** fade out *****
-  [[dur, lambda => {
+  [[1, lambda => {
     magentaMesh.alpha = 1 - lambda;
     yellowMesh.alpha = 1 - lambda;
   }]]
@@ -447,6 +446,8 @@ window.addEventListener('resize', () => engine.resize());
 
 const notes = document.querySelector("#notes")!;
 
+const speed = document.querySelector("#speed") as HTMLInputElement;
+
 const step = document.querySelector("#step")! as HTMLButtonElement;
 step.textContent = `step 1/${motions.length}`;
 
@@ -455,7 +456,7 @@ step.addEventListener("click", async () => {
   step.disabled = true;
   let i = 0;
   for (let subStep of motions[stepNo++ % motions.length]) {
-    await motionController.initStep(...subStep);
+    await motionController.initStep(Number(speed.value) * subStep[0], subStep[1]);
   }
   step.disabled = false;
   step.textContent = `step ${stepNo % motions.length + 1}/${motions.length}`;
