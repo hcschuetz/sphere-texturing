@@ -114,7 +114,7 @@ light3.intensity = 0.5;
 
 const octahedron = B.MeshBuilder.CreatePolyhedron("octahedron", {
   type: 1,
-  size: Math.sqrt(.5),
+  size: Math.sqrt(.5) * 0.999,
 }, scene);
 octahedron.material = createStandardMaterial("octaMat", {
   diffuseColor: new B.Color3(.8, .8, .8),
@@ -224,6 +224,26 @@ const cyanMesh    = new WithAuxLines(flatLines, flat, cyan   , 0);
 const yellowMesh  = new WithAuxLines(flatLines, flat, yellow , 0);
 const magentaMesh = new WithAuxLines(flatLines, flat, magenta, 0);
 
+// workaround for rendering problems with flatLines:
+// TODO cleaner solution: use thin tubes for lines
+const directLineMat = createStandardMaterial("directLineMat", {
+  diffuseColor: magenta,
+  emissiveColor: magenta,
+  alpha: 0,
+}, scene);
+const offset = v3(1,1,1).scaleInPlace(.0001);
+B.CreateLineSystem("direct", {
+  lines: T.flat(n).map(line => [
+    // slightly offset the line so that rendering errors (mostly)
+    // do not happen in the same places as for the original line:
+    line[0].addInPlace(offset),
+    line.at(-1)!.addInPlace(offset),
+    // going back to have another chance of proper rendering:
+    line[0].addInPlace(offset),
+  ]),
+  material: directLineMat,
+}, scene);
+
 const zip = <T, U, V>(f: (t: T, u: U) => V) => (ts: T[], us: U[]): V[] =>
   ts.map((t, i) => f(t, us[i]));
 
@@ -236,7 +256,7 @@ const motions: [number, (current: number) => void][][] = [
     magentaMesh.lines = yellowMesh.lines = cyanMesh.lines = flatLines;
     magentaMesh.triangulation = yellowMesh.triangulation = cyanMesh.triangulation = flat;
   }],
-  [1, lambda => magentaMesh.alpha = lambda]],
+  [1, lambda => directLineMat.alpha = magentaMesh.alpha = lambda]],
   // ***** flat *****
   [[1, lambda => {
     yellowMesh.alpha = Math.sqrt(lambda);
@@ -256,6 +276,7 @@ const motions: [number, (current: number) => void][][] = [
   // TODO show rays
   [[1, lambda => {
     magentaMesh.alpha = 1;
+    directLineMat.alpha = 0;
     const lambda1 = easeInOut(lambda);
     magentaMesh.lines =
       zip(zip((from: V3, to: V3) => V3.Lerp(from, to, lambda1)))
