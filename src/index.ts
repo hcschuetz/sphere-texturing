@@ -1,7 +1,7 @@
 import * as B from "babylonjs";
 import * as M from "mobx";
 import * as T from "./triangulation";
-import { MotionController, easeInOut, subdivide } from "./utils";
+import { MotionController, easeInOut, slerp, subdivide } from "./utils";
 // import { log } from "./debug";
 
 M.configure({
@@ -17,6 +17,7 @@ M.configure({
 // Abbreviations:
 type V3 = B.Vector3;
 const V3 = B.Vector3;
+const v3 = (x: number, y: number, z: number) => new V3(x, y, z);
 
 const TAU = 2 * Math.PI;
 
@@ -90,28 +91,63 @@ const motionController = new MotionController();
 
 const scene = new B.Scene(engine);
 
-const camera = new B.ArcRotateCamera("camera", TAU/12, TAU/5, 3, new V3(0, 0, 0), scene);
+const camera = new B.ArcRotateCamera("camera", TAU/12, TAU/5, 3, v3(0, 0, 0), scene);
 camera.attachControl(undefined, true);
 
-const light = new B.HemisphericLight('light1', new V3(0, 1, 0), scene);
-light.intensity = 0.7;
+const light = new B.HemisphericLight('light1', v3(0, 1, 0), scene);
+light.intensity = 0.8;
 
-const light2 = new B.SpotLight("light2",
-  new V3(-3, 3, 10),
-  new V3(3, -3, -10),
-  TAU/2, //TAU/80,
-  0.9,
-  scene
-);
+const light2 = new B.DirectionalLight("light2", v3(10, -2, -10), scene);
 light2.intensity = 0.8;
 
-[[1,0,0], [0,1,0], [0,0,1]].forEach((dims, i) => {
+const light3 = new B.DirectionalLight("light3", v3(3, 10, 10), scene);
+light3.intensity = 0.5;
+
+([[1,0,0], [0,1,0], [0,0,1]] as [number, number, number][])
+.forEach((dims, i) => {
   const color = new B.Color4(...dims);
   B.MeshBuilder.CreateLines("axis-" + i, {
-    points: [new V3(0,0,0), new V3(...dims).scaleInPlace(1.5)],
+    points: [v3(0,0,0), v3(...dims).scaleInPlace(1.5)],
     colors: [color, color],
   }, scene);
 });
+
+const octahedron = B.MeshBuilder.CreatePolyhedron("octahedron", {
+  type: 1,
+  size: Math.sqrt(.5),
+}, scene);
+octahedron.material = createStandardMaterial("octaMat", {
+  diffuseColor: new B.Color3(.8, .8, .8),
+  alpha: 0.2,
+  sideOrientation: B.VertexData.DOUBLESIDE,
+}, scene);
+
+const sphere = B.MeshBuilder.CreateSphere("sphere", {
+  diameter: 2,
+});
+sphere.material = createStandardMaterial("sphMat", {
+  diffuseColor: new B.Color3(.2, .2, .2),
+  alpha: 0.2,
+  sideOrientation: B.VertexData.DOUBLESIDE,
+}, scene);
+
+const arc1 = B.MeshBuilder.CreateLines("arc1", {
+  points:
+    subdivide(0, 1, 40).map(lambda =>
+      slerp(v3(1, 0, 0), v3(0, 1, 0), lambda)
+    ),
+}, scene);
+const arc2 = arc1.clone("arc2");
+arc2.rotate(v3(1, 0, 0), TAU/4);
+const arc3 = arc1.clone("arc3");
+arc3.rotate(v3(0, 1, 0), -TAU/4);
+arc1.material = arc2.material = arc3.material =
+  createStandardMaterial("arcMat", {
+    diffuseColor: B.Color3.Gray(),
+    emissiveColor: B.Color3.Gray(),
+    alpha: 0.4,
+    sideOrientation: B.VertexData.DOUBLESIDE,
+  }, scene);
 
 const n = 6;
 
@@ -396,7 +432,7 @@ scene.registerAfterRender(function () {
   }
 });
 
-const ROT_AXIS = new V3(1, 1, 1).normalize();
+const ROT_AXIS = v3(1, 1, 1).normalize();
 function rotateTo(mesh: B.Mesh, amount: number) {
   // Implementing absolute rotation as reset + relative rotation.
   // TODO Check if babylon has absolute rotation directly.
