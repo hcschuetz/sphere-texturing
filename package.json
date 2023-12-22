@@ -1,9 +1,10 @@
 {
-  "name": "test-babylon",
+  "name": "octasphere",
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "start": "vite"
+    "start": "vite",
+    "build": "vite build --base ./ --emptyOutDir"
   },
   "author": "Heribert Schütz",
   "license": "MIT",
