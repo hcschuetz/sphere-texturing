@@ -1,7 +1,7 @@
 import * as B from "babylonjs";
 import * as M from "mobx";
 import * as T from "./triangulation";
-import { MotionController, easeInOut, slerp, subdivide } from "./utils";
+import { MotionController, easeInOut, slerp, subdivide, zip } from "./utils";
 // import { log } from "./debug";
 
 M.configure({
@@ -229,8 +229,9 @@ const cyanMesh    = new WithAuxLines(flatLines, flat, cyan   , 0);
 const yellowMesh  = new WithAuxLines(flatLines, flat, yellow , 0);
 const magentaMesh = new WithAuxLines(flatLines, flat, magenta, 0);
 
-const zip = <T, U, V>(f: (t: T, u: U) => V) => (ts: T[], us: U[]): V[] =>
-  ts.map((t, i) => f(t, us[i]));
+/** Lerp between two V3[][] (of equal shape) */
+const lerp2 = (lambda: number) =>
+  zip(zip((from: V3, to: V3) => V3.Lerp(from, to, lambda)));
 
 const motions: [number, (current: number) => void][][] = [
   // TODO show a rounded box with wireframe and colored faces (planes),
@@ -262,15 +263,11 @@ const motions: [number, (current: number) => void][][] = [
   [[1, lambda => {
     magentaMesh.alpha = 1;
     const lambda1 = easeInOut(lambda);
-    magentaMesh.lines =
-      zip(zip((from: V3, to: V3) => V3.Lerp(from, to, lambda1)))
-      (flatLines, geodesics);
+    magentaMesh.lines = lerp2(lambda1)(flatLines, geodesics);
   }]],
   [[1, lambda => {
     const lambda1 = easeInOut(lambda);
-    magentaMesh.triangulation =
-      zip(zip((from: V3, to: V3) => V3.Lerp(from, to, lambda1)))
-      (flat, geodesic);
+    magentaMesh.triangulation = lerp2(lambda1)(flat, geodesic);
   }]],
   // ***** geodesic *****
   [[0, () => {
@@ -295,15 +292,11 @@ const motions: [number, (current: number) => void][][] = [
   [[1, lambda => {
     magentaMesh.alpha = 1;
     const lambda1 = easeInOut(lambda);
-    magentaMesh.lines =
-      zip(zip((from: V3, to: V3) => V3.Lerp(from, to, lambda1)))
-      (geodesics, parallels);
+    magentaMesh.lines = lerp2(lambda1)(geodesics, parallels);
   }]],
   [[1, lambda => {
     const lambda1 = easeInOut(lambda);
-    magentaMesh.triangulation =
-      zip(zip((from: V3, to: V3) => V3.Lerp(from, to, lambda1)))
-      (geodesic, onParallels);
+    magentaMesh.triangulation = lerp2(lambda1)(geodesic, onParallels);
   }]],
   // ***** parallels *****
   [[0, () => {
@@ -328,15 +321,11 @@ const motions: [number, (current: number) => void][][] = [
   [[1, lambda => {
     magentaMesh.alpha = 1;
     const lambda1 = easeInOut(lambda);
-    magentaMesh.lines =
-      zip(zip((from: V3, to: V3) => V3.Lerp(from, to, lambda1)))
-      (parallels, evenGeodesics);
+    magentaMesh.lines = lerp2(lambda1)(parallels, evenGeodesics);
   }]],
   [[1, lambda => {
     const lambda1 = easeInOut(lambda);
-    magentaMesh.triangulation =
-      zip(zip((from: V3, to: V3) => V3.Lerp(from, to, lambda1)))
-      (onParallels, onEvenGeodesics);
+    magentaMesh.triangulation = lerp2(lambda1)(onParallels, onEvenGeodesics);
   }]],
   // ***** evenGeodesics *****
   [[0, () => {
@@ -361,19 +350,13 @@ const motions: [number, (current: number) => void][][] = [
   [[1, lambda => {
     magentaMesh.alpha = 1;
     const lambda1 = easeInOut(lambda);
-    magentaMesh.lines =
-      zip(zip((from: V3, to: V3) => V3.Lerp(from, to, lambda1)))
-      (evenGeodesics, collapsedLines);
-    magentaMesh.triangulation =
-      zip(zip((from: V3, to: V3) => V3.Lerp(from, to, lambda1)))
-      (onEvenGeodesics, flat);
+    magentaMesh.lines = lerp2(lambda1)(evenGeodesics, collapsedLines);
+    magentaMesh.triangulation = lerp2(lambda1)(onEvenGeodesics, flat);
   }]],
   // ***** flat => sines *****
   [[1, lambda => {
     const lambda1 = easeInOut(lambda);
-    magentaMesh.triangulation =
-      zip(zip((from: V3, to: V3) => V3.Lerp(from, to, lambda1)))
-      (flat, sines);
+    magentaMesh.triangulation = lerp2(lambda1)(flat, sines);
   }]],
   // ***** sines *****
   [[0, () => {
@@ -395,9 +378,7 @@ const motions: [number, (current: number) => void][][] = [
   // TODO show rays
   [[1, lambda => {
     const lambda1 = easeInOut(lambda);
-    magentaMesh.triangulation =
-      zip(zip((from: V3, to: V3) => V3.Lerp(from, to, lambda1)))
-      (sines, sineBased);
+    magentaMesh.triangulation = lerp2(lambda1)(sines, sineBased);
   }]],
   [[0, () => {
     cyanMesh.lines = yellowMesh.lines = magentaMesh.lines;

@@ -63,3 +63,8 @@ export const easeInOut = (lambda: number) =>
 
 export const map2 = <T, U>(xss: T[][], f: (x: T) => U): U[][] =>
   xss.map(xs => xs.map(f));
+
+export const zip =
+  <T, U, V>(f: (t: T, u: U) => V) =>
+    (ts: T[], us: U[]): V[] =>
+      ts.map((t, i) => f(t, us[i]));
