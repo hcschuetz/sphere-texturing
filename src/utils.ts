@@ -22,36 +22,41 @@ export const axes: Vector3[] = [
   new Vector3(0, 0, 1),
 ];
 
-export type Vertex = { i: number; j: number; p: Vector3; };
-
 export class MotionController {
   tFrom = 0;
   tTo = 0;
   from = 0;
   to = 0;
   value = 0;
-  initStep(stepSize: number, duration: number): void {
+
+  update: (lambda: number) => void;
+  onStepDone: () => void;
+
+  initStep(duration: number, update: (lambda: number) => void): Promise<void> {
     this.from = this.to;
-    this.to += stepSize;
+    this.to++;
     const now = Date.now();
     this.tFrom = now;
     this.tTo = now + duration;
+    this.update = update;
+    return new Promise(resolve => this.onStepDone = resolve);
   }
+
   isMoving(): boolean {
     return this.to !== this.value;
   }
+
   current(): number {
     const now = Math.min(this.tTo, Date.now());
     let weightFrom = this.tTo - now;
     let weightTo = now - this.tFrom;
-
-    // easing:
-    weightFrom = weightFrom ** 2;
-    weightTo = weightTo ** 2;
-
+    if (weightFrom === 0) {
+      this.onStepDone();
+    }
     return this.value =
       (this.from * weightFrom + this.to * weightTo) / (weightFrom + weightTo);
   }
 }
-;
 
+export const easeInOut = (lambda: number) =>
+  lambda * lambda / (1 + 2 * lambda * (lambda - 1));

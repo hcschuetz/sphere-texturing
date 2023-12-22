@@ -1,41 +1,43 @@
 import { Vector3 } from "babylonjs";
-import { Vertex, TAU, frac, subdivide, axes, slerp } from "./utils";
+import { TAU, subdivide, axes, slerp } from "./utils";
 
-export type Triangulation = (
-  n: number,
-) => Generator<Vertex, void, void>;
+export type Triangulation = Vector3[][];
+export type TriangulationFn = (n: number) => Triangulation
 
-const mapTriangulation = (tr: Triangulation, f: (v: Vector3) => Vector3): Triangulation =>
-  function*(n) {
-    for (const {i, j, p} of tr(n)) {
-      yield {i, j, p: f(p)};
-    }
-  }
+/** 2-level version of Array.prototype.map */
+const map2 = <T, U>(xss: T[][], f: (x: T) => U): U[][] =>
+  xss.map(xs => xs.map(f));
 
-export const onParallels: Triangulation = function*(n: number) {
-  for (let i = 0; i <= n; i++) {
-    const alpha = i/n * TAU/4
-    const sin_alpha = Math.sin(alpha);
-    const cos_alpha = Math.cos(alpha);
-    for (let j = 0; j <= n - i; j++) {
-      const beta = frac(j, n - i) * TAU/4;
-      const sin_beta = Math.sin(beta);
-      const cos_beta = Math.cos(beta);
-      yield {i, j, p: new Vector3(
-        cos_alpha * cos_beta,
-        sin_alpha,
-        cos_alpha * sin_beta
-      )};
-    }
-  }
+
+// We do not need the refinement here because the lines are straight anyway.
+// But we accept a refinement for compatibility with analogous functions.
+export const flatLines = (n: number, refinement: number): Vector3[][] => {
+  const [X, Y, Z] = axes;
+  return subdivide(0, 1, n).map((i, ii) => {
+    const XY = Vector3.Lerp(X, Y, i);
+    const ZY = Vector3.Lerp(Z, Y, i);
+    return subdivide(0, 1, (n - ii) * refinement).map(j =>
+      Vector3.Lerp(XY, ZY, j)
+    );
+  });
 }
 
-export const parallels = (n: number, resolution: number): Vector3[][] => {
-  return subdivide(0, 1, n).map(i => {
+export const flat: TriangulationFn = n => flatLines(n, 1);
+
+
+export const geodesic: TriangulationFn =
+  n => map2(flat(n), v => v.normalize());
+
+export const geodesics = (n: number, refinement: number): Vector3[][] =>
+  map2(flatLines(n, refinement), p => p.normalize());
+
+
+export const parallels = (n: number, refinement: number): Vector3[][] =>
+  subdivide(0, 1, n).map((i, ii) => {
     const alpha = i * TAU/4
     const sin_alpha = Math.sin(alpha);
     const cos_alpha = Math.cos(alpha);
-    return subdivide(0, 1, resolution).map(j => {
+    return subdivide(0, 1, (n - ii) * refinement).map(j => {
       const beta = j * TAU/4;
       const sin_beta = Math.sin(beta);
       const cos_beta = Math.cos(beta);
@@ -45,142 +47,41 @@ export const parallels = (n: number, resolution: number): Vector3[][] => {
         cos_alpha * sin_beta
       );
     });
-  })
-}
+  });
 
-export const onEvenGeodesics: Triangulation = function*(n) {
-  const [X, Y, Z] = axes;
-  for (let i = 0; i <= n; i++) {
-    const AB = slerp(X, Y, i/n);
-    const CB = slerp(Z, Y, i/n);
-    for (let j = 0; j <= n - i; j++) {
-      yield{i, j, p: slerp(AB, CB, frac(j, n - i))};
-    }
-  }
-}
+export const onParallels: TriangulationFn = n => parallels(n, 1);
 
-export const evenGeodesics = (n: number, resolution: number): Vector3[][] => {
+
+export const evenGeodesics = (n: number, refinement: number): Vector3[][] => {
   const [X, Y, Z] = axes;
-  return subdivide(0, 1, n).map(i => {
+  return subdivide(0, 1, n).map((i, ii) => {
     const XY = slerp(X, Y, i);
     const ZY = slerp(Z, Y, i);
-    return subdivide(0, 1, resolution).map(j =>
+    return subdivide(0, 1, (n - ii) * refinement).map(j =>
       slerp(XY, ZY, j)
     );
   });
 }
 
+export const onEvenGeodesics: TriangulationFn = n => evenGeodesics(n, 1);
 
-export const flat: Triangulation = function*(n) {
-  const X = new Vector3(1, 0, 0);
-  const Y = new Vector3(0, 1, 0);
-  const Z = new Vector3(0, 0, 1);
-  for (let i = 0; i <= n; i++) {
-    const XY = Vector3.Lerp(X, Y, i/n);
-    const ZY = Vector3.Lerp(Z, Y, i/n);
-    for (let j = 0; j <= n - i; j++) {
-      yield {i, j, p: Vector3.Lerp(XY, ZY, frac(j, n - i))};
-    }
-  }
-}
 
-export const flatLines = (n: number, resolution: number): Vector3[][] => {
-  const [X, Y, Z] = axes;
-  return subdivide(0, 1, n).map(i => {
-    const XY = Vector3.Lerp(X, Y, i);
-    const ZY = Vector3.Lerp(Z, Y, i);
-    return subdivide(0, 1, resolution).map(j =>
-      Vector3.Lerp(XY, ZY, j)
-    );
-  });
-}
+export const sines: TriangulationFn = n =>
+  map2(flat(n), vec =>
+    new Vector3(...vec.asArray().map(c => Math.sin(c * TAU/4)))
+  );
 
-export const geodesic = mapTriangulation(flat, v => v.normalize());
+export const sineBased: TriangulationFn =
+  n => map2(sines(n), v => v.normalize());
 
-export const geodesics = (n: number, resolution: number): Vector3[][] => {
-  const [X, Y, Z] = axes;
-  return subdivide(0, 1, n).map(i => {
-    const XY = Vector3.Lerp(X, Y, i).normalize();
-    const ZY = Vector3.Lerp(Z, Y, i).normalize();
-    return subdivide(0, 1, resolution).map(j =>
-      slerp(XY, ZY, j)
-    );
-  });
-}
 
-export const sines: Triangulation = function*(n) {
-  for (let i = 0; i <= n; i++) {
-    const sin_i = Math.sin(i/n * TAU/4);
-    for (let j = 0; j <= n - i; j++) {
-      const k = n - i - j;
-      const sin_j = Math.sin(j/n * TAU/4);
-      const sin_k = Math.sin(k/n * TAU/4);
-      yield {i, j, p: new Vector3(sin_i, sin_j, sin_k)};
-    }
-  }
-}
-export const sineBased = mapTriangulation(sines, v => v.normalize());
+export const collapsedLines = (n: number, refinement: number): Vector3[][] =>
+  subdivide(0, 1, n).map((i, ii) =>
+    subdivide(0, 1, (n - ii) * refinement).map(j =>
+      Vector3.ZeroReadOnly
+    )
+  );
 
-export function* rays(n: number, tr: Triangulation): Generator<Vector3[], void, void> {
-  const origin = new Vector3();
-  for (const {p} of tr(n)) {
-    yield [origin, p];
-  }
-};
 
-export const interpolateTriangulations = (
-  tr1: Triangulation, tr2: Triangulation, lambda: number,
-  method = slerp,
-): Triangulation => function*(n) {
-  const gen1 = tr1(n), gen2 = tr2(n);
-  let out1 = gen1.next(), out2 = gen2.next();
-  for (;;) {
-    if (out1.done !== out2.done) {
-      throw new Error("incompatible triangulation lengths");
-    }
-    if (out1.done) {
-      break;
-    }
-    const {i, j, p} = out2.value!;
-    if (out1.value.i !== i || out1.value.j !== j) {
-      throw new Error("incompatible triangulation indices");
-    }
-    const idx = yield {i, j, p: method(out1.value.p, p, lambda)};
-    out1 = gen1.next(idx), out2 = gen2.next(idx);
-  }
-};
-
-export function* driver<V>(
-  n: number,
-  tr: Triangulation,
-  options: {
-    emitVertex: (name: string, v: V) => void,
-    emitEdge: (name: string, v1: V, v2: V) => void,
-    emitFace: (name: string, v1: V, v2: V, v3: V) => void,
-  },
-): Generator<Vertex, void, V> {
-  const key = (i: number, j: number) => `${i},${j},${n - i - j}`;
-  const {emitVertex, emitEdge, emitFace} = options;
-  const vertices: Record<string, V> = {};
-  for (const {i, j, p} of tr(n)) {
-    const addr = key(i, j);
-    const v = yield {i, j, p};
-    emitVertex("v" + addr, v);
-    vertices[addr] = v;
-    if (i > 0) {
-      const v1 = vertices[key(i-1, j)];
-      const v2 = vertices[key(i-1, j+1)];
-      emitEdge(`e1(${addr})`, v1, v);
-      emitEdge(`e2(${addr})`, v2, v);
-      emitFace(`f1(${addr})`, v1, v2, v);
-      if (j > 0) {
-        const v3 = vertices[key(i, j-1)];
-        emitFace(`f2(${addr})`, v1, v, v3);
-      }
-    }
-    if (j > 0) {
-      const v3 = vertices[key(i, j-1)];
-      emitEdge(`e3(${addr})`, v3, v);
-    }
-  };
-}
+export const rays = (n: number, tr: Triangulation): Vector3[][] =>
+  tr.flatMap(points => points.map(point => [Vector3.ZeroReadOnly, point]));
