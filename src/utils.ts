@@ -23,38 +23,38 @@ export const axes: Vector3[] = [
 ];
 
 export class MotionController {
-  tFrom = 0;
-  tTo = 0;
-  from = 0;
-  to = 0;
-  value = 0;
+  #tFrom = 0;
+  #tTo = 0;
+  #from = 0;
+  #to = 0;
+  #value = 0;
 
-  update: (lambda: number) => void;
-  onStepDone: () => void;
+  #updateRaw: (lambda: number) => void;
+  #onStepDone: () => void;
 
-  initStep(duration: number, update: (lambda: number) => void): Promise<void> {
-    this.from = this.to;
-    this.to++;
+  initStep(duration: number, updateRaw: (lambda: number) => void): Promise<void> {
+    this.#from = this.#to;
+    this.#to++;
     const now = Date.now();
-    this.tFrom = now;
-    this.tTo = now + duration;
-    this.update = update;
-    return new Promise(resolve => this.onStepDone = resolve);
+    this.#tFrom = now;
+    this.#tTo = now + duration;
+    this.#updateRaw = updateRaw;
+    return new Promise(resolve => this.#onStepDone = resolve);
   }
 
-  isMoving(): boolean {
-    return this.to !== this.value;
-  }
-
-  current(): number {
-    const now = Math.min(this.tTo, Date.now());
-    let weightFrom = this.tTo - now;
-    let weightTo = now - this.tFrom;
-    if (weightFrom === 0) {
-      this.onStepDone();
+  update = () => {
+    if (this.#to !== this.#value) {
+      const step = this.#from;
+      const now = Math.min(this.#tTo, Date.now());
+      let weightFrom = this.#tTo - now;
+      let weightTo = now - this.#tFrom;
+      this.#value =
+        (this.#from * weightFrom + this.#to * weightTo) / (weightFrom + weightTo);
+      this.#updateRaw(this.#value - step);
+      if (weightFrom === 0) {
+        this.#onStepDone();
+      }
     }
-    return this.value =
-      (this.from * weightFrom + this.to * weightTo) / (weightFrom + weightTo);
   }
 }
 

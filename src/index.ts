@@ -87,8 +87,6 @@ function createTriangulation(
   }, {fireImmediately: true});
 }
 
-const motionController = new MotionController();
-
 const scene = new B.Scene(engine);
 
 const camera = new B.ArcRotateCamera("camera", TAU/12, TAU/5, 3, v3(0, 0, 0), scene);
@@ -410,13 +408,6 @@ const motions: [number, (current: number) => void][][] = [
   }]]
 ]
 
-scene.registerAfterRender(function () {
-  if (motionController.isMoving()) {
-    const step = motionController.from;
-    const lambda = motionController.current() - step;
-    motionController.update(lambda);
-  }
-});
 
 const ROT_AXIS = v3(1, 1, 1).normalize();
 function rotateTo(mesh: B.Mesh, amount: number) {
@@ -437,6 +428,9 @@ const speed = document.querySelector("#speed") as HTMLInputElement;
 
 const step = document.querySelector("#step")! as HTMLButtonElement;
 step.textContent = `step 1/${motions.length}`;
+
+const motionController = new MotionController();
+scene.registerAfterRender(motionController.update);
 
 let stepNo = 0;
 step.addEventListener("click", async () => {
