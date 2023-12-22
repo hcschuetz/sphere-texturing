@@ -106,8 +106,9 @@ light3.intensity = 0.5;
 ([[1,0,0], [0,1,0], [0,0,1]] as [number, number, number][])
 .forEach((dims, i) => {
   const color = new B.Color4(...dims);
+  // While other lines look better as tubes, the axes look better as lines.
   B.MeshBuilder.CreateLines("axis-" + i, {
-    points: [v3(0,0,0), v3(...dims).scaleInPlace(1.5)],
+    points: [v3(...dims).scaleInPlace(-1.5), v3(...dims).scaleInPlace(1.5)],
     colors: [color, color],
   }, scene);
 });
@@ -128,14 +129,16 @@ const sphere = B.MeshBuilder.CreateSphere("sphere", {
 sphere.material = createStandardMaterial("sphMat", {
   diffuseColor: new B.Color3(.2, .2, .2),
   alpha: 0.2,
+  // This seems to have no effect:
   sideOrientation: B.VertexData.DOUBLESIDE,
 }, scene);
 
-const arc1 = B.MeshBuilder.CreateLines("arc1", {
-  points:
-    subdivide(0, 1, 40).map(lambda =>
+const arc1 = B.MeshBuilder.CreateTube("arc1", {
+  path: subdivide(0, 1, 40).map(lambda =>
       slerp(v3(1, 0, 0), v3(0, 1, 0), lambda)
     ),
+  radius: 0.003,
+  tessellation: 6,
 }, scene);
 const arc2 = arc1.clone("arc2");
 arc2.rotate(v3(1, 0, 0), TAU/4);
@@ -175,16 +178,18 @@ class WithAuxLines extends B.Mesh {
     }, scene);
     M.autorun(() => lineMaterial.alpha = this.alpha);
 
-    const lineSys = B.CreateLineSystem("geodesics", {
+    lines.forEach((path, i) => {
+      if (path.length <= 1) return;
+      const tube = B.MeshBuilder.CreateTube("tubeLine", {
       updatable: true,
-      lines,
-      material: lineMaterial,
+        path,
+        radius: 0.003,
+        tessellation: 6,
     }, scene);
-    lineSys.parent = this;
+      tube.material = lineMaterial
+      tube.parent = this;
     M.autorun(() => {
-      B.CreateLineSystem("geodesics+", {
-        instance: lineSys,
-        lines: this.lines,
+        B.MeshBuilder.CreateTube("tubeLine", {instance: tube, path: this.lines[i]});
       });
     });
 
@@ -200,7 +205,7 @@ class WithAuxLines extends B.Mesh {
     createTriangulation({
       n,
       triangulationBox,
-      parent: lineSys,
+      parent: this,
       vertexMaterial,
     }, scene);
   }
@@ -224,26 +229,6 @@ const cyanMesh    = new WithAuxLines(flatLines, flat, cyan   , 0);
 const yellowMesh  = new WithAuxLines(flatLines, flat, yellow , 0);
 const magentaMesh = new WithAuxLines(flatLines, flat, magenta, 0);
 
-// workaround for rendering problems with flatLines:
-// TODO cleaner solution: use thin tubes for lines
-const directLineMat = createStandardMaterial("directLineMat", {
-  diffuseColor: magenta,
-  emissiveColor: magenta,
-  alpha: 0,
-}, scene);
-const offset = v3(1,1,1).scaleInPlace(.0001);
-B.CreateLineSystem("direct", {
-  lines: T.flat(n).map(line => [
-    // slightly offset the line so that rendering errors (mostly)
-    // do not happen in the same places as for the original line:
-    line[0].addInPlace(offset),
-    line.at(-1)!.addInPlace(offset),
-    // going back to have another chance of proper rendering:
-    line[0].addInPlace(offset),
-  ]),
-  material: directLineMat,
-}, scene);
-
 const zip = <T, U, V>(f: (t: T, u: U) => V) => (ts: T[], us: U[]): V[] =>
   ts.map((t, i) => f(t, us[i]));
 
@@ -256,7 +241,7 @@ const motions: [number, (current: number) => void][][] = [
     magentaMesh.lines = yellowMesh.lines = cyanMesh.lines = flatLines;
     magentaMesh.triangulation = yellowMesh.triangulation = cyanMesh.triangulation = flat;
   }],
-  [1, lambda => directLineMat.alpha = magentaMesh.alpha = lambda]],
+  [1, lambda => magentaMesh.alpha = lambda]],
   // ***** flat *****
   [[1, lambda => {
     yellowMesh.alpha = Math.sqrt(lambda);
@@ -276,7 +261,6 @@ const motions: [number, (current: number) => void][][] = [
   // TODO show rays
   [[1, lambda => {
     magentaMesh.alpha = 1;
-    directLineMat.alpha = 0;
     const lambda1 = easeInOut(lambda);
     magentaMesh.lines =
       zip(zip((from: V3, to: V3) => V3.Lerp(from, to, lambda1)))
