@@ -206,16 +206,17 @@ class WithAuxLines extends B.Mesh {
   }
 }
 
-const flatLines = T.flatLines(n, 10);
-const geodesics = T.geodesics(n, 10);
-const evenGeodesics = T.evenGeodesics(n, 10);
-const parallels = T.parallels(n, 10);
-const collapsedLines = T.collapsedLines(n, 10);
+const refinement = 10;
+const flatLines = T.flat(n, refinement);
+const geodesics = T.geodesics(n, refinement);
+const parallels = T.parallels(n, refinement);
+const evenGeodesics = T.evenGeodesics(n, refinement);
+const collapsedLines = T.collapsed(n, refinement);
 
 const flat = T.flat(n);
-const geodesic = T.geodesic(n);
-const onParallels = T.onParallels(n);
-const onEvenGeodesics = T.onEvenGeodesics(n);
+const geodesic = T.geodesics(n);
+const onParallels = T.parallels(n);
+const onEvenGeodesics = T.evenGeodesics(n);
 const sines = T.sines(n);
 const sineBased = T.sineBased(n);
 

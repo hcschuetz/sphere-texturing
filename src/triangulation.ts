@@ -1,17 +1,18 @@
 import { Vector3 } from "babylonjs";
-import { TAU, subdivide, axes, slerp } from "./utils";
+import { TAU, subdivide, axes, slerp, map2 } from "./utils";
 
+/**
+Actually triangulations should not just be arbitrary 2-level arrays of points,
+but they should have a certain shape:
+
+The last subarray should contain one point and each preceding subarray should
+contain one point more than its successor.
+*/
 export type Triangulation = Vector3[][];
-export type TriangulationFn = (n: number) => Triangulation
-
-/** 2-level version of Array.prototype.map */
-const map2 = <T, U>(xss: T[][], f: (x: T) => U): U[][] =>
-  xss.map(xs => xs.map(f));
-
 
 // We do not need the refinement here because the lines are straight anyway.
 // But we accept a refinement for compatibility with analogous functions.
-export const flatLines = (n: number, refinement: number): Vector3[][] => {
+export const flat = (n: number, refinement = 1): Vector3[][] => {
   const [X, Y, Z] = axes;
   return subdivide(0, 1, n).map((i, ii) => {
     const XY = Vector3.Lerp(X, Y, i);
@@ -22,17 +23,10 @@ export const flatLines = (n: number, refinement: number): Vector3[][] => {
   });
 }
 
-export const flat: TriangulationFn = n => flatLines(n, 1);
+export const geodesics = (n: number, refinement = 1): Vector3[][] =>
+  map2(flat(n, refinement), p => p.normalize());
 
-
-export const geodesic: TriangulationFn =
-  n => map2(flat(n), v => v.normalize());
-
-export const geodesics = (n: number, refinement: number): Vector3[][] =>
-  map2(flatLines(n, refinement), p => p.normalize());
-
-
-export const parallels = (n: number, refinement: number): Vector3[][] =>
+export const parallels = (n: number, refinement = 1): Vector3[][] =>
   subdivide(0, 1, n).map((i, ii) => {
     const alpha = i * TAU/4
     const sin_alpha = Math.sin(alpha);
@@ -49,10 +43,7 @@ export const parallels = (n: number, refinement: number): Vector3[][] =>
     });
   });
 
-export const onParallels: TriangulationFn = n => parallels(n, 1);
-
-
-export const evenGeodesics = (n: number, refinement: number): Vector3[][] => {
+export const evenGeodesics = (n: number, refinement = 1): Vector3[][] => {
   const [X, Y, Z] = axes;
   return subdivide(0, 1, n).map((i, ii) => {
     const XY = slerp(X, Y, i);
@@ -63,24 +54,16 @@ export const evenGeodesics = (n: number, refinement: number): Vector3[][] => {
   });
 }
 
-export const onEvenGeodesics: TriangulationFn = n => evenGeodesics(n, 1);
-
-
-export const sines: TriangulationFn = n =>
+export const sines = (n: number): Triangulation =>
   map2(flat(n), vec =>
     new Vector3(...vec.asArray().map(c => Math.sin(c * TAU/4)))
   );
 
-export const sineBased: TriangulationFn =
-  n => map2(sines(n), v => v.normalize());
+export const sineBased = (n: number): Triangulation =>
+  map2(sines(n), v => v.normalize());
 
-
-export const collapsedLines = (n: number, refinement: number): Vector3[][] =>
-  subdivide(0, 1, n).map((i, ii) =>
-    subdivide(0, 1, (n - ii) * refinement).map(j =>
-      Vector3.ZeroReadOnly
-    )
-  );
+export const collapsed = (n: number, refinement = 1): Vector3[][] =>
+  map2(flat(n, refinement), () => Vector3.Zero());
 
 
 export const rays = (n: number, tr: Triangulation): Vector3[][] =>

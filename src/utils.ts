@@ -60,3 +60,6 @@ export class MotionController {
 
 export const easeInOut = (lambda: number) =>
   lambda * lambda / (1 + 2 * lambda * (lambda - 1));
+
+export const map2 = <T, U>(xss: T[][], f: (x: T) => U): U[][] =>
+  xss.map(xs => xs.map(f));
