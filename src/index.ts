@@ -563,7 +563,10 @@ const motions: Motion[][] = [
     rotateTo(cyanMesh, -easeInOut(lambda));
   }]],
   // ***** evenGeodesics => evenOnEdges *****
-  [[0, () => whiteMesh.alpha = 1],
+  [[0, () => {
+    whiteMesh.triangulation = evenOnEdges;
+    whiteMesh.alpha = 1;
+  }],
   [0.5, lambda => {
     cyanMesh.alpha = yellowMesh.alpha = magentaMesh.alpha = 1 - lambda;
   }]],
@@ -694,8 +697,7 @@ const motions: Motion[][] = [
   // TODO show polyhedra
   // ***** fade out *****
   [[1, lambda => {
-    whiteMesh.alpha = 1 - lambda;
-    magentaMesh.alpha = 1 - lambda;
+    sinesExpl.alpha = whiteMesh.alpha = magentaMesh.alpha = yellowMesh.alpha = 1 - lambda;
   }]]
 ]
 
