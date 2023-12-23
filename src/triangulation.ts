@@ -54,10 +54,11 @@ export const evenGeodesics = (n: number, refinement = 1): Vector3[][] => {
   });
 }
 
+/** sin scaled to period 4 */
+const sin4 = (x: number) => Math.sin(TAU/4 * x);
+
 export const sines = (n: number): Triangulation =>
-  map2(flat(n), vec =>
-    new Vector3(...vec.asArray().map(c => Math.sin(c * TAU/4)))
-  );
+  map2(flat(n), ({x, y, z}) => new Vector3(sin4(x), sin4(y), sin4(z)));
 
 export const sineBased = (n: number): Triangulation =>
   map2(sines(n), v => v.normalize());
