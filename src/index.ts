@@ -113,6 +113,14 @@ light3.intensity = 0.5;
   }, scene);
 });
 
+// Allow to hide some vertices temporarily inside the origin
+B.MeshBuilder.CreateIcoSphere("origin", {
+  radius: 0.02,
+}, scene).material = createStandardMaterial("originMat", {
+  diffuseColor: B.Color3.Black(),
+}, scene);
+
+
 const octahedron = B.MeshBuilder.CreatePolyhedron("octahedron", {
   type: 1,
   size: Math.sqrt(.5) * 0.999,
