@@ -463,7 +463,6 @@ const motions: Motion[][] = [
   // TODO show a rounded box with wireframe and colored faces (planes),
   // edges (quarter cylinders), and corners (eighths of spheres)
   // (port the buzzer?)
-  // TODO show full octahedron with transparent sphere around
   [[0, () => {
     magentaMesh.rotation = yellowMesh.rotation = cyanMesh.rotation = V3.ZeroReadOnly;
     magentaMesh.lines = yellowMesh.lines = cyanMesh.lines = flatLines;
@@ -594,24 +593,6 @@ const motions: Motion[][] = [
       bary.coords = V3.Lerp(baryPoints[i], p, easeInOut(lambda));
     }] as Motion]
   ),
-
-  // TODO explain barycentric coordinates
-  // "Address" of a point (i, j, k)
-  // - i: #steps from the right edge
-  // - j: #steps from the bottom edge
-  // - k: #steps from the left edge
-  // Actually only two degrees of freedom, not three (i/j/k)
-  // Condition: i + j + k = n
-  // On the octagon face the point with address (i, j, k)
-  // has coordinates (i/n, j/n, k/n)
-  //
-  // TODO derive sin-based formulas on the left edge (z = 0)
-  // (cos(y * 90°), sin(y * 90°), 0)
-  // (sin(x * 90°), sin(y * 90°), 0)
-  // (sin(x * 90°), sin(y * 90°), sin(z * 90°))
-  //
-  // TODO suggest sin-based formula all over
-
   [[0.5, lambda => {
     cyanMesh.alpha = yellowMesh.alpha = magentaMesh.alpha =
     bary.alpha = 1 - lambda;
