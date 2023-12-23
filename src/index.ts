@@ -38,7 +38,7 @@ const createStandardMaterial = (
 function createTriangulation(
   props: {
     n: number,
-    triangulationBox: M.IComputedValue<T.Triangulation>,
+    verticesBox: M.IComputedValue<T.Triangulation>,
     parent?: B.Mesh,
     vertexMaterial?: B.Material,
     edgeColor?: B.Color4,
@@ -48,7 +48,7 @@ function createTriangulation(
 ) {
   const {
     n,
-    triangulationBox,
+    verticesBox,
     parent,
     vertexMaterial,
     edgeColor,
@@ -75,7 +75,7 @@ function createTriangulation(
       })
     );
 
-  M.reaction(() => triangulationBox.get(), tr => {
+  M.reaction(() => verticesBox.get(), tr => {
     if (!vertices) return;
     let i = 0;
     for (const row of tr) {
@@ -170,17 +170,17 @@ const cyan = B.Color3.Teal();
 const magenta = B.Color3.Magenta();
 const yellow = B.Color3.Yellow();
 
-class WithAuxLines extends B.Mesh {
+class TriangulationWithAuxLines extends B.Mesh {
   constructor (
     public lines: V3[][],
-    public triangulation: T.Triangulation,
+    public vertices: T.Triangulation,
     public color: B.Color3,
     public alpha: number = 1,
   ) {
     super("WithAuxLines", scene);
     M.makeObservable(this, {
       lines: M.observable,
-      triangulation: M.observable.ref,
+      vertices: M.observable.ref,
       alpha: M.observable,
     });
 
@@ -211,12 +211,12 @@ class WithAuxLines extends B.Mesh {
     M.autorun(() => vertexMaterial.alpha = this.alpha);
 
     // TODO get rid of this conversion between two kinds of observables:
-    const triangulationBox = M.observable.box(this.triangulation);
-    M.autorun(() => triangulationBox.set(this.triangulation));
+    const verticesBox = M.observable.box(this.vertices);
+    M.autorun(() => verticesBox.set(this.vertices));
 
     createTriangulation({
       n,
-      triangulationBox,
+      verticesBox,
       parent: this,
       vertexMaterial,
     }, scene);
@@ -442,10 +442,10 @@ const flatOnXYEdge = flat.map((row, i) => row.map((vertex, j) =>
   j === 0 ? vertex : V3.ZeroReadOnly
 ));
 
-const cyanMesh    = new WithAuxLines(flatLines, flat, cyan   , 0);
-const yellowMesh  = new WithAuxLines(flatLines, flat, yellow , 0);
-const magentaMesh = new WithAuxLines(flatLines, flat, magenta, 0);
-const whiteMesh   = new WithAuxLines(collapsedLines, evenOnEdges, B.Color3.White(), 0);
+const cyanMesh    = new TriangulationWithAuxLines(flatLines, flat, cyan   , 0);
+const yellowMesh  = new TriangulationWithAuxLines(flatLines, flat, yellow , 0);
+const magentaMesh = new TriangulationWithAuxLines(flatLines, flat, magenta, 0);
+const whiteMesh   = new TriangulationWithAuxLines(collapsedLines, evenOnEdges, B.Color3.White(), 0);
 const rays = new Rays(collapsed.flat(), 0);
 const baryPoints = [
   v3(1,3,2), v3(4,1,1),
@@ -466,7 +466,7 @@ const motions: Motion[][] = [
   [[0, () => {
     magentaMesh.rotation = yellowMesh.rotation = cyanMesh.rotation = V3.ZeroReadOnly;
     magentaMesh.lines = yellowMesh.lines = cyanMesh.lines = flatLines;
-    magentaMesh.triangulation = yellowMesh.triangulation = cyanMesh.triangulation = flat;
+    magentaMesh.vertices = yellowMesh.vertices = cyanMesh.vertices = flat;
   }],
   [1, lambda => magentaMesh.alpha = lambda]],
   // ***** flat *****
@@ -493,7 +493,7 @@ const motions: Motion[][] = [
     magentaMesh.alpha = 1;
     const lambda1 = easeInOut(lambda);
     magentaMesh.lines = lerp2(lambda1)(flatLines, geodesics);
-    magentaMesh.triangulation = lerp2(lambda1)(flat, geodesic);
+    magentaMesh.vertices = lerp2(lambda1)(flat, geodesic);
   }]],
   [[.5, lambda => {
     rays.alpha = 1 - lambda;
@@ -501,7 +501,7 @@ const motions: Motion[][] = [
   // ***** geodesic *****
   [[0, () => {
     cyanMesh.lines = yellowMesh.lines = magentaMesh.lines;
-    cyanMesh.triangulation = yellowMesh.triangulation = magentaMesh.triangulation;
+    cyanMesh.vertices = yellowMesh.vertices = magentaMesh.vertices;
   }],
   [1, lambda => {
     yellowMesh.alpha = Math.sqrt(lambda);
@@ -525,12 +525,12 @@ const motions: Motion[][] = [
   }]],
   [[1, lambda => {
     const lambda1 = easeInOut(lambda);
-    magentaMesh.triangulation = lerp2(lambda1)(geodesic, onParallels);
+    magentaMesh.vertices = lerp2(lambda1)(geodesic, onParallels);
   }]],
   // ***** parallels *****
   [[0, () => {
     cyanMesh.lines = yellowMesh.lines = magentaMesh.lines;
-    cyanMesh.triangulation = yellowMesh.triangulation = magentaMesh.triangulation;
+    cyanMesh.vertices = yellowMesh.vertices = magentaMesh.vertices;
   }],
   [1, lambda => {
     yellowMesh.alpha = Math.sqrt(lambda);
@@ -554,12 +554,12 @@ const motions: Motion[][] = [
   }]],
   [[1, lambda => {
     const lambda1 = easeInOut(lambda);
-    magentaMesh.triangulation = lerp2(lambda1)(onParallels, onEvenGeodesics);
+    magentaMesh.vertices = lerp2(lambda1)(onParallels, onEvenGeodesics);
   }]],
   // ***** evenGeodesics *****
   [[0, () => {
     cyanMesh.lines = yellowMesh.lines = magentaMesh.lines;
-    cyanMesh.triangulation = yellowMesh.triangulation = magentaMesh.triangulation;
+    cyanMesh.vertices = yellowMesh.vertices = magentaMesh.vertices;
   }],
   [1, lambda => {
     yellowMesh.alpha = Math.sqrt(lambda);
@@ -571,7 +571,7 @@ const motions: Motion[][] = [
   }]],
   // ***** evenGeodesics => evenOnEdges *****
   [[0, () => {
-    whiteMesh.triangulation = evenOnEdges;
+    whiteMesh.vertices = evenOnEdges;
     whiteMesh.alpha = 1;
   }],
   [0.5, lambda => {
@@ -579,7 +579,7 @@ const motions: Motion[][] = [
   }]],
   [[0, () => {
     cyanMesh.lines = yellowMesh.lines = magentaMesh.lines = flatLines;
-    cyanMesh.triangulation = yellowMesh.triangulation = magentaMesh.triangulation = collapsed;
+    cyanMesh.vertices = yellowMesh.vertices = magentaMesh.vertices = collapsed;
     rotateTo(magentaMesh, 0);
     rotateTo(yellowMesh, 1);
     rotateTo(cyanMesh, -1);
@@ -600,7 +600,7 @@ const motions: Motion[][] = [
   // ***** evenOnEdges => ... *****
   [[0, () => {
     cyanMesh.rotation = yellowMesh.rotation = V3.ZeroReadOnly;
-    yellowMesh.triangulation = flatOnEdges;
+    yellowMesh.vertices = flatOnEdges;
     yellowMesh.lines = collapsedLines;
   }],
   [.5, lambda => {
@@ -609,8 +609,8 @@ const motions: Motion[][] = [
   }]],
   [[.5, lambda => {
     const lambda1 = easeInOut(lambda);
-    yellowMesh.triangulation = lerp2(lambda1)(flatOnEdges, flatOnXYEdge);
-    whiteMesh.triangulation = lerp2(lambda1)(evenOnEdges, evenOnXYEdge);
+    yellowMesh.vertices = lerp2(lambda1)(flatOnEdges, flatOnXYEdge);
+    whiteMesh.vertices = lerp2(lambda1)(evenOnEdges, evenOnXYEdge);
   }]],
   [[.5, lambda => {
     sinesExpl.alpha = lambda;
@@ -627,7 +627,7 @@ const motions: Motion[][] = [
   // ***** ... => sines *****
   [[0, () => {
     cyanMesh.lines = magentaMesh.lines = yellowMesh.lines;
-    cyanMesh.triangulation = magentaMesh.triangulation = yellowMesh.triangulation;
+    cyanMesh.vertices = magentaMesh.vertices = yellowMesh.vertices;
   }],
   [1, lambda => {
     const lambda1 = Math.sqrt(lambda);
@@ -635,11 +635,11 @@ const motions: Motion[][] = [
     rotateTo(cyanMesh, easeInOut(lambda));
     magentaMesh.alpha = Math.sqrt(lambda);
     rotateTo(magentaMesh, -easeInOut(lambda));
-    whiteMesh.triangulation = lerp2(easeInOut(lambda))(evenOnXYEdge, evenOnEdges);
+    whiteMesh.vertices = lerp2(easeInOut(lambda))(evenOnXYEdge, evenOnEdges);
   }]],
   [[0.5, lambda => {
     yellowMesh.alpha = cyanMesh.alpha = magentaMesh.alpha = 1 - lambda;
-    whiteMesh.triangulation = lerp2(easeInOut(lambda))(evenOnEdges, sines);
+    whiteMesh.vertices = lerp2(easeInOut(lambda))(evenOnEdges, sines);
   }]],
   [[.5, lambda => sinesExpl.alpha = 1 - lambda],
    [0, () => sinesExpl.step = 8],
@@ -652,14 +652,14 @@ const motions: Motion[][] = [
   [[1, lambda => {
     const lambda1 = easeInOut(lambda);
     sinesExpl.step = 8 + lambda1;
-    whiteMesh.triangulation = lerp2(lambda1)(sines, sineBased);
+    whiteMesh.vertices = lerp2(lambda1)(sines, sineBased);
   }]],
   [[.5, lambda => {
     rays.alpha = 1 - lambda;
   }]],
   [[0, () => {
     cyanMesh.lines = yellowMesh.lines = whiteMesh.lines;
-    cyanMesh.triangulation = yellowMesh.triangulation = whiteMesh.triangulation;
+    cyanMesh.vertices = yellowMesh.vertices = whiteMesh.vertices;
   }],
   [1, lambda => {
     yellowMesh.alpha = Math.sqrt(lambda);
@@ -675,15 +675,18 @@ const motions: Motion[][] = [
   // ***** for comparison: geodesic
   [[0, () => {
     magentaMesh.lines = collapsedLines;
-    magentaMesh.triangulation = geodesic;
+    magentaMesh.vertices = geodesic;
   }],
   [1, lambda => {
     const lambda1 = easeInOut(lambda);
     magentaMesh.alpha = lambda1;
-    magentaMesh.triangulation = lerp2(lambda1)(sineBased, geodesic)
+    magentaMesh.vertices = lerp2(lambda1)(sineBased, geodesic)
   }]],
   // TODO show wireframes
   // TODO show polyhedra
+  // TODO Mention icosphere?  A similar ad-hoc generalization of slerp from
+  // two to three base points should be possible.
+  // (But probably not worth the effort.)
   // ***** fade out *****
   [[1, lambda => {
     sinesExpl.alpha = whiteMesh.alpha = magentaMesh.alpha = yellowMesh.alpha = 1 - lambda;
