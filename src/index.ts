@@ -88,9 +88,11 @@ function createTriangulation(
 }
 
 const scene = new B.Scene(engine);
+scene.clearColor = new BABYLON.Color4(0, 0, 0, 0);
 
 const camera = new B.ArcRotateCamera("camera", TAU/12, TAU/5, 3, v3(0, 0, 0), scene);
 camera.attachControl(undefined, true);
+camera.position.addInPlace(v3(-.5,0,-.5));
 
 const light = new B.HemisphericLight('light1', v3(0, 1, 0), scene);
 light.intensity = 0.8;
@@ -125,8 +127,8 @@ const sphere = B.MeshBuilder.CreateSphere("sphere", {
   diameter: 2,
 });
 sphere.material = createStandardMaterial("sphMat", {
-  diffuseColor: new B.Color3(.2, .2, .2),
-  alpha: 0.2,
+  diffuseColor: new B.Color3(1,1,1),
+  alpha: 0.1,
   // This seems to have no effect:
   sideOrientation: B.VertexData.DOUBLESIDE,
 }, scene);
@@ -151,6 +153,10 @@ arc1.material = arc2.material = arc3.material =
   }, scene);
 
 const n = 6;
+
+const red = B.Color3.Red();
+const green = B.Color3.Green();
+const blue = B.Color3.Blue();
 
 const cyan = B.Color3.Teal();
 const magenta = B.Color3.Magenta();
@@ -183,10 +189,10 @@ class WithAuxLines extends B.Mesh {
         path,
         radius: 0.003,
         tessellation: 6,
-    }, scene);
+      }, scene);
       tube.material = lineMaterial
       tube.parent = this;
-    M.autorun(() => {
+      M.autorun(() => {
         B.MeshBuilder.CreateTube("tubeLine", {instance: tube, path: this.lines[i]});
       });
     });
@@ -209,6 +215,198 @@ class WithAuxLines extends B.Mesh {
   }
 }
 
+class Rays {
+  constructor(
+    public ends: V3[],
+    public alpha: number,
+  ) {
+    M.makeObservable(this, {
+      ends: M.observable,
+      alpha: M.observable,
+    });
+
+    const color = new B.Color3(.6,.6,.6);
+    const material = createStandardMaterial("rayMat", {
+      diffuseColor: color,
+      emissiveColor: color,
+    }, scene);
+    M.autorun(() => material.alpha = this.alpha);
+
+    ends.forEach((end, i) => {
+      const ray = B.CreateTube("ray", {
+        updatable: true,
+        path: [V3.ZeroReadOnly, end],
+        radius: 0.003,
+        tessellation: 6,
+      });
+      ray.material = material;
+      M.autorun(() => B.CreateTube("rays", {
+        instance: ray,
+        path: [V3.ZeroReadOnly, this.ends[i]],
+      }));
+    })
+  }
+}
+
+class BarycentricCoordinates {
+  constructor(
+    public coords: V3,
+    public alpha: number,
+  ) {
+    M.makeObservable(this, {
+      coords: M.observable,
+      alpha: M.observable,
+    });
+
+    const div = document.createElement("div");
+    Object.assign(div.style, {
+      position: "fixed",
+      bottom: "20px",
+      left: "20px",
+      color: "white",
+      lineHeight: "1.6",
+      fontFamily: "Arial, Helvetica, sans-serif",
+    });
+    document.body.append(div);
+    M.autorun(() => {
+      div.style.opacity = this.alpha.toString();
+      div.style.display = this.alpha ? "" : "none";
+    });
+    M.autorun(() => {
+      const {coords} = this;
+      const point = coords.scale(1 / (coords.x + coords.y + coords.z));
+      div.innerHTML = `
+        <span style="text-decoration: underline">Barycentric Coordinates</span>
+        <br>
+        not normalized (sum ${n}):
+        <br>
+        <span style="
+          border-radius: 4px;
+          padding: 6px 8px;
+          background-color: #ccc;
+          color: #000;
+        ">
+          <b style="color: red"  >${coords.x.toFixed(2)}</b> :
+          <b style="color: green">${coords.y.toFixed(2)}</b> :
+          <b style="color: blue" >${coords.z.toFixed(2)}</b></span>
+        <div style="height: 0.3ex;"></div>
+        normalized (sum 1):
+        <br>
+        <span style="
+          border-radius: 4px;
+          padding: 6px;
+          background-color: #ccc;
+          color: #000;
+        ">
+          <b style="color: red"  >${point.x.toFixed(2)}</b> :
+          <b style="color: green">${point.y.toFixed(2)}</b> :
+          <b style="color: blue" >${point.z.toFixed(2)}</b></span>
+        `;
+    });
+
+    [red, green, blue].forEach((color, idx) => {
+      const material = createStandardMaterial("baryMat", {
+        diffuseColor: color,
+        emissiveColor: color,
+      }, scene);
+      M.autorun(() => material.alpha = this.alpha);
+      const ruler = B.CreateTube("ruler", {
+        updatable: true,
+        path: [V3.ZeroReadOnly, V3.ZeroReadOnly],
+        radius: 0.015,
+        tessellation: 6,
+      }, scene);
+      ruler.material = material;
+      M.autorun(() => {
+        const {coords} = this;
+        // barycentric (not Euclidian!) normalization:
+        const point = coords.scale(1 / (coords.x + coords.y + coords.z));
+        let base: V3 =
+          idx === 0 ? v3(0, point.y + point.x / 2, point.z + point.x / 2) :
+          idx === 1 ? v3(point.x + point.y / 2, 0, point.z + point.y / 2) :
+          idx === 2 ? v3(point.x + point.z / 2, point.y + point.z / 2, 0) :
+          (() => { throw new Error("unexpected idx"); })();
+        B.CreateTube("ruler", {
+          instance: ruler,
+          path: [point, base],
+        }, scene);
+      });
+    })
+  }
+}
+
+class SinesExplanation {
+  step = 0;
+  alpha = 0;
+
+  constructor() {
+    M.makeObservable(this, {
+      step: M.observable,
+      alpha: M.observable,
+    });
+
+    const div = document.createElement("div");
+    Object.assign(div.style, {
+      position: "fixed",
+      bottom: "20px",
+      left: "20px",
+      padding: "6px",
+      lineHeight: "2",
+      fontFamily: "Arial, Helvetica, sans-serif",
+      fontWeight: "200",
+      color: "white",
+    });
+    document.body.append(div);
+    M.autorun(() => {
+      div.style.opacity = this.alpha.toString();
+      div.style.display = this.alpha ? "" : "none";
+    });
+    M.autorun(() => {
+      // This can be seen as "poor man's React":
+      div.innerHTML =
+        this.step <= 6 ? `
+        X
+        = cos( <span style="color: yellow">y</span> · 90° )
+        <span style="opacity: ${Math.max(0, Math.min(1, this.step - 0))};">
+        = sin( 90° - <span style="color: yellow">y</span> · 90° )
+        </span>
+        <span style="opacity: ${Math.max(0, Math.min(1, this.step - 1))};">
+        = sin( ( 1 - <span style="color: yellow">y</span> ) · 90° )
+        </span>
+        <span style="opacity: ${Math.max(0, Math.min(1, this.step - 2))};">
+        = sin( <span style="color: yellow">x</span> · 90° )
+        </span>
+        <br>
+        Y = sin( <span style="color: yellow">y</span> · 90° )
+        <br>
+        Z = 0
+        <span style="opacity: ${Math.max(0, Math.min(1, this.step - 3))};">
+        = sin( 0° )
+        </span>
+        <span style="opacity: ${Math.max(0, Math.min(1, this.step - 4))};">
+        = sin( 0 · 90° )
+        </span>
+        <span style="opacity: ${Math.max(0, Math.min(1, this.step - 5))};">
+        = sin( <span style="color: yellow">z</span> · 90° )
+        </span>
+      ` : this.step <= 7 ? `
+        <span style="opacity: ${Math.max(0, Math.min(1, this.step - 6))};">
+        X = sin( <span style="color: yellow">x</span> · 90° )
+        <br>
+        Y = sin( <span style="color: yellow">y</span> · 90° )
+        <br>
+        Z = sin( <span style="color: yellow">z</span> · 90° )
+        </span>
+      ` : `
+        <span style="opacity: ${Math.max(0, Math.min(1, this.step - 8))};">normalize</span>(
+        sin( <span style="color: yellow">x</span> · 90° ),
+        sin( <span style="color: yellow">y</span> · 90° ),
+        sin( <span style="color: yellow">z</span> · 90° ) )
+      `;
+    });
+  }
+}
+
 const refinement = 10;
 const flatLines = T.flat(n, refinement);
 const geodesics = T.geodesics(n, refinement);
@@ -219,24 +417,47 @@ const collapsedLines = T.collapsed(n, refinement);
 const flat = T.flat(n);
 const geodesic = T.geodesics(n);
 const onParallels = T.parallels(n);
-const onEvenGeodesics = T.evenGeodesics(n);
 const sines = T.sines(n);
 const sineBased = T.sineBased(n);
+const collapsed = T.collapsed(n);
+const onEvenGeodesics = T.evenGeodesics(n);
+const evenOnEdges = sines.map((row, i) => row.map((vertex, j) =>
+  (i === 0 || j === 0 || i + j === n) ? vertex : V3.ZeroReadOnly
+));
+const flatOnEdges = flat.map((row, i) => row.map((vertex, j) =>
+  (i === 0 || j === 0 || i + j === n) ? vertex : V3.ZeroReadOnly
+));
+const evenOnXYEdge = sines.map((row, i) => row.map((vertex, j) =>
+  j === 0 ? vertex : V3.ZeroReadOnly
+));
+const flatOnXYEdge = flat.map((row, i) => row.map((vertex, j) =>
+  j === 0 ? vertex : V3.ZeroReadOnly
+));
 
 const cyanMesh    = new WithAuxLines(flatLines, flat, cyan   , 0);
 const yellowMesh  = new WithAuxLines(flatLines, flat, yellow , 0);
 const magentaMesh = new WithAuxLines(flatLines, flat, magenta, 0);
+const whiteMesh   = new WithAuxLines(collapsedLines, evenOnEdges, B.Color3.White(), 0);
+const rays = new Rays(collapsed.flat(), 0);
+const baryPoints = [
+  v3(1,3,2), v3(4,1,1),
+  v3(6,0,0), v3(0,6,0), v3(0,0,6), v3(6,0,0)]
+const bary = new BarycentricCoordinates(baryPoints[0], 0);
+const sinesExpl = new SinesExplanation();
+
 
 /** Lerp between two V3[][] (of equal shape) */
 const lerp2 = (lambda: number) =>
   zip(zip((from: V3, to: V3) => V3.Lerp(from, to, lambda)));
 
-const motions: [number, (current: number) => void][][] = [
+type Motion = [number, (current: number) => void];
+const motions: Motion[][] = [
   // TODO show a rounded box with wireframe and colored faces (planes),
   // edges (quarter cylinders), and corners (eighths of spheres)
   // (port the buzzer?)
   // TODO show full octahedron with transparent sphere around
   [[0, () => {
+    magentaMesh.rotation = yellowMesh.rotation = cyanMesh.rotation = V3.ZeroReadOnly;
     magentaMesh.lines = yellowMesh.lines = cyanMesh.lines = flatLines;
     magentaMesh.triangulation = yellowMesh.triangulation = cyanMesh.triangulation = flat;
   }],
@@ -248,24 +469,27 @@ const motions: [number, (current: number) => void][][] = [
   }]],
   [[1, lambda => {
     cyanMesh.alpha = Math.sqrt(lambda);
-    rotateTo(cyanMesh, 1 + easeInOut(lambda));
+    rotateTo(cyanMesh, -easeInOut(lambda));
   }]],
   [[1, lambda => {
     rotateTo(yellowMesh, 1 - easeInOut(lambda));
-    rotateTo(cyanMesh, 2 + easeInOut(lambda));
+    rotateTo(cyanMesh, -1 + easeInOut(lambda));
     yellowMesh.alpha = Math.sqrt(1 - lambda);
     cyanMesh.alpha = Math.sqrt(1 - lambda);
   }]],
   // ***** flat => geodesic *****
-  // TODO show rays
+  [[1, lambda => {
+    rays.alpha = lambda;
+    rays.ends = lerp2(lambda)(collapsed, geodesic).flat();
+  }]],
   [[1, lambda => {
     magentaMesh.alpha = 1;
     const lambda1 = easeInOut(lambda);
     magentaMesh.lines = lerp2(lambda1)(flatLines, geodesics);
-  }]],
-  [[1, lambda => {
-    const lambda1 = easeInOut(lambda);
     magentaMesh.triangulation = lerp2(lambda1)(flat, geodesic);
+  }]],
+  [[.5, lambda => {
+    rays.alpha = 1 - lambda;
   }]],
   // ***** geodesic *****
   [[0, () => {
@@ -278,11 +502,11 @@ const motions: [number, (current: number) => void][][] = [
   }]],
   [[1, lambda => {
     cyanMesh.alpha = Math.sqrt(lambda);
-    rotateTo(cyanMesh, 1 + easeInOut(lambda));
+    rotateTo(cyanMesh, -easeInOut(lambda));
   }]],
   [[1, lambda => {
     rotateTo(yellowMesh, 1 - easeInOut(lambda));
-    rotateTo(cyanMesh, 2 + easeInOut(lambda));
+    rotateTo(cyanMesh, -1 + easeInOut(lambda));
     yellowMesh.alpha = Math.sqrt(1 - lambda);
     cyanMesh.alpha = Math.sqrt(1 - lambda);
   }]],
@@ -307,11 +531,11 @@ const motions: [number, (current: number) => void][][] = [
   }]],
   [[1, lambda => {
     cyanMesh.alpha = Math.sqrt(lambda);
-    rotateTo(cyanMesh, 1 + easeInOut(lambda));
+    rotateTo(cyanMesh, -easeInOut(lambda));
   }]],
   [[1, lambda => {
     rotateTo(yellowMesh, 1 - easeInOut(lambda));
-    rotateTo(cyanMesh, 2 + easeInOut(lambda));
+    rotateTo(cyanMesh, -1 + easeInOut(lambda));
     yellowMesh.alpha = Math.sqrt(1 - lambda);
     cyanMesh.alpha = Math.sqrt(1 - lambda);
   }]],
@@ -336,51 +560,114 @@ const motions: [number, (current: number) => void][][] = [
   }]],
   [[1, lambda => {
     cyanMesh.alpha = Math.sqrt(lambda);
-    rotateTo(cyanMesh, 1 + easeInOut(lambda));
+    rotateTo(cyanMesh, -easeInOut(lambda));
   }]],
-  [[1, lambda => {
-    rotateTo(yellowMesh, 1 - easeInOut(lambda));
-    rotateTo(cyanMesh, 2 + easeInOut(lambda));
-    yellowMesh.alpha = Math.sqrt(1 - lambda);
-    cyanMesh.alpha = Math.sqrt(1 - lambda);
+  // ***** evenGeodesics => evenOnEdges *****
+  [[0, () => whiteMesh.alpha = 1],
+  [0.5, lambda => {
+    cyanMesh.alpha = yellowMesh.alpha = magentaMesh.alpha = 1 - lambda;
   }]],
-  // ***** evenGeodesics => flat *****
-  [[1, lambda => {
-    magentaMesh.alpha = 1;
-    const lambda1 = easeInOut(lambda);
-    magentaMesh.lines = lerp2(lambda1)(evenGeodesics, collapsedLines);
-    magentaMesh.triangulation = lerp2(lambda1)(onEvenGeodesics, flat);
-  }]],
-  // ***** flat => sines *****
-  [[1, lambda => {
-    const lambda1 = easeInOut(lambda);
-    magentaMesh.triangulation = lerp2(lambda1)(flat, sines);
-  }]],
-  // ***** sines *****
   [[0, () => {
-    cyanMesh.lines = yellowMesh.lines = magentaMesh.lines;
-    cyanMesh.triangulation = yellowMesh.triangulation = magentaMesh.triangulation;
+    cyanMesh.lines = yellowMesh.lines = magentaMesh.lines = flatLines;
+    cyanMesh.triangulation = yellowMesh.triangulation = magentaMesh.triangulation = collapsed;
+    rotateTo(magentaMesh, 0);
+    rotateTo(yellowMesh, 1);
+    rotateTo(cyanMesh, -1);
+  }],
+  [.5, lambda => {
+    cyanMesh.alpha = yellowMesh.alpha = magentaMesh.alpha = lambda;
+  }]],
+  [[1, lambda => bary.alpha = lambda]],
+  ...baryPoints.slice(1).map((p, i) =>
+    [[1, lambda => {
+      bary.coords = V3.Lerp(baryPoints[i], p, easeInOut(lambda));
+    }] as Motion]
+  ),
+
+  // TODO explain barycentric coordinates
+  // "Address" of a point (i, j, k)
+  // - i: #steps from the right edge
+  // - j: #steps from the bottom edge
+  // - k: #steps from the left edge
+  // Actually only two degrees of freedom, not three (i/j/k)
+  // Condition: i + j + k = n
+  // On the octagon face the point with address (i, j, k)
+  // has coordinates (i/n, j/n, k/n)
+  //
+  // TODO derive sin-based formulas on the left edge (z = 0)
+  // (cos(y * 90°), sin(y * 90°), 0)
+  // (sin(x * 90°), sin(y * 90°), 0)
+  // (sin(x * 90°), sin(y * 90°), sin(z * 90°))
+  //
+  // TODO suggest sin-based formula all over
+
+  [[0.5, lambda => {
+    cyanMesh.alpha = yellowMesh.alpha = magentaMesh.alpha =
+    bary.alpha = 1 - lambda;
+  }]],
+  // ***** evenOnEdges => ... *****
+  [[0, () => {
+    cyanMesh.rotation = yellowMesh.rotation = V3.ZeroReadOnly;
+    yellowMesh.triangulation = flatOnEdges;
+    yellowMesh.lines = collapsedLines;
+  }],
+  [.5, lambda => {
+    const lambda1 = easeInOut(lambda);
+    yellowMesh.alpha = lambda1;
+  }]],
+  [[.5, lambda => {
+    const lambda1 = easeInOut(lambda);
+    yellowMesh.triangulation = lerp2(lambda1)(flatOnEdges, flatOnXYEdge);
+    whiteMesh.triangulation = lerp2(lambda1)(evenOnEdges, evenOnXYEdge);
+  }]],
+  [[.5, lambda => {
+    sinesExpl.alpha = lambda;
+  }]],
+  [[.5, lambda => sinesExpl.step = 0 + lambda]],
+  [[.5, lambda => sinesExpl.step = 1 + lambda]],
+  [[.5, lambda => sinesExpl.step = 2 + lambda]],
+  [[.5, lambda => sinesExpl.step = 3 + lambda]],
+  [[.5, lambda => sinesExpl.step = 4 + lambda]],
+  [[.5, lambda => sinesExpl.step = 5 + lambda]],
+  [[.5, lambda => sinesExpl.alpha = 1 - lambda],
+   [0, () => sinesExpl.step = 7],
+   [.5, lambda => sinesExpl.alpha = lambda]],
+  // ***** ... => sines *****
+  [[0, () => {
+    cyanMesh.lines = magentaMesh.lines = yellowMesh.lines;
+    cyanMesh.triangulation = magentaMesh.triangulation = yellowMesh.triangulation;
   }],
   [1, lambda => {
-    yellowMesh.alpha = Math.sqrt(lambda);
-    rotateTo(yellowMesh, easeInOut(lambda));
+    const lambda1 = Math.sqrt(lambda);
+    cyanMesh.alpha = lambda1;
+    rotateTo(cyanMesh, easeInOut(lambda));
+    magentaMesh.alpha = Math.sqrt(lambda);
+    rotateTo(magentaMesh, -easeInOut(lambda));
+    whiteMesh.triangulation = lerp2(easeInOut(lambda))(evenOnXYEdge, evenOnEdges);
   }]],
-  [[1, lambda => {
-    cyanMesh.alpha = Math.sqrt(lambda);
-    rotateTo(cyanMesh, 1 + easeInOut(lambda));
-  }],
-  [0, lambda => {
-    yellowMesh.alpha = cyanMesh.alpha = 0;
+  [[0.5, lambda => {
+    yellowMesh.alpha = cyanMesh.alpha = magentaMesh.alpha = 1 - lambda;
+    whiteMesh.triangulation = lerp2(easeInOut(lambda))(evenOnEdges, sines);
   }]],
+  [[.5, lambda => sinesExpl.alpha = 1 - lambda],
+   [0, () => sinesExpl.step = 8],
+   [1, lambda => sinesExpl.alpha = lambda]],
   // ***** sines => sineBased *****
-  // TODO show rays
+  [[1, lambda => {
+    rays.alpha = lambda;
+    rays.ends = lerp2(lambda)(collapsed, sineBased).flat();
+  }]],
   [[1, lambda => {
     const lambda1 = easeInOut(lambda);
-    magentaMesh.triangulation = lerp2(lambda1)(sines, sineBased);
+    sinesExpl.step = 8 + lambda1;
+    whiteMesh.triangulation = lerp2(lambda1)(sines, sineBased);
+  }]],
+  [[.5, lambda => {
+    rays.alpha = 1 - lambda;
   }]],
   [[0, () => {
-    cyanMesh.lines = yellowMesh.lines = magentaMesh.lines;
-    cyanMesh.triangulation = yellowMesh.triangulation = magentaMesh.triangulation;
+    cyanMesh.lines = yellowMesh.lines = whiteMesh.lines;
+    cyanMesh.triangulation = yellowMesh.triangulation = whiteMesh.triangulation;
   }],
   [1, lambda => {
     yellowMesh.alpha = Math.sqrt(lambda);
@@ -388,23 +675,27 @@ const motions: [number, (current: number) => void][][] = [
   }]],
   [[1, lambda => {
     cyanMesh.alpha = Math.sqrt(lambda);
-    rotateTo(cyanMesh, 1 + easeInOut(lambda));
+    rotateTo(cyanMesh, -easeInOut(lambda));
   }],
   [0, lambda => {
-    yellowMesh.alpha = cyanMesh.alpha = 0;
+    magentaMesh.alpha = cyanMesh.alpha = 0;
   }]],
   // ***** for comparison: geodesic
   [[0, () => {
-    yellowMesh.lines = collapsedLines;
-    yellowMesh.triangulation = geodesic;
+    magentaMesh.lines = collapsedLines;
+    magentaMesh.triangulation = geodesic;
   }],
   [1, lambda => {
-    yellowMesh.alpha = lambda;
+    const lambda1 = easeInOut(lambda);
+    magentaMesh.alpha = lambda1;
+    magentaMesh.triangulation = lerp2(lambda1)(sineBased, geodesic)
   }]],
+  // TODO show wireframes
+  // TODO show polyhedra
   // ***** fade out *****
   [[1, lambda => {
+    whiteMesh.alpha = 1 - lambda;
     magentaMesh.alpha = 1 - lambda;
-    yellowMesh.alpha = 1 - lambda;
   }]]
 ]
 
@@ -422,8 +713,6 @@ engine.runRenderLoop(() => scene.render());
 window.addEventListener('resize', () => engine.resize());
 
 
-const notes = document.querySelector("#notes")!;
-
 const speed = document.querySelector("#speed") as HTMLInputElement;
 
 const step = document.querySelector("#step")! as HTMLButtonElement;
@@ -433,7 +722,7 @@ const motionController = new MotionController();
 scene.registerAfterRender(motionController.update);
 
 let stepNo = 0;
-step.addEventListener("click", async () => {
+async function performStep() {
   step.disabled = true;
   let i = 0;
   for (let subStep of motions[stepNo++ % motions.length]) {
@@ -441,4 +730,17 @@ step.addEventListener("click", async () => {
   }
   step.disabled = false;
   step.textContent = `step ${stepNo % motions.length + 1}/${motions.length}`;
-});
+}
+
+// Fast forward for debugging a later step
+async function skipTo(nSteps: number) {
+  speed.value = "1";
+  for (let i = 0; i < nSteps; i++) {
+    await performStep();
+  }
+  speed.value = "1500";
+}
+// skipTo(44);
+
+
+step.addEventListener("click", performStep);

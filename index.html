@@ -3,30 +3,51 @@
 <head>
   <title>Octasphere</title>
   <script type="module" src="src/index.ts"></script>
+  <style>
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
+      font-size: 2.5vw;
+      background-color: #003;
+    }
+    #renderCanvas {
+      position: fixed;
+      top: 0;
+      right: 0  ;
+      width: 70vw;
+      height: 100vh;
+    }
+    #renderCanvas:focus {
+      outline: none;
+    }
+    .controlPanel {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      width: 30%;
+      color: white;
+      font-family: Arial, Helvetica, sans-serif;
+    }
+    #step {
+      margin-bottom: 1ex;
+      border-radius: 4px;
+      border: 1px solid #fff;
+      padding: 4px 8px;
+      background: #6664;
+      color: white;
+      font: inherit;
+    }
+  </style>
 </head>
-<body style="width: 100%; height: 100%; overflow: hidden; margin: 0; padding: 0;">
-  <canvas style="width: 100%; height: 100%;" id="renderCanvas"></canvas>
-  <div style="
-    position: fixed;
-    top: 20px;
-    left: 10px;
-    width: 30%;
-    color: white;
-    font-family: Arial, Helvetica, sans-serif;
-  ">
-    <span style="
-      border-radius: 3px;
-      border: 2px solid red;
-      padding: 6px 6px 3px;
-      color: red;
-      background-color: white;
-      font-weight: bold;
-    ">WORK IN PROGRESS</span>
-    <div style="margin: 1ex 0;">
-      fast <input type="range" name="speed" id="speed" min="0" max="3000" value="1500"> slow
-    </div>
+<body>
+  <canvas id="renderCanvas"></canvas>
+  <div class="controlPanel">
     <button id="step">step</button>
-    <p id="notes"></p>
+    <br>
+    fast <input type="range" name="speed" id="speed" min="1" max="3000" value="1500"> slow
   </div>
 </body>
 </html>
