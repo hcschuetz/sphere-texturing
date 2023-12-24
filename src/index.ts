@@ -93,6 +93,8 @@ const scene = new B.Scene(engine);
 scene.clearColor = new BABYLON.Color4(0, 0, 0, 0);
 
 const camera = new B.ArcRotateCamera("camera", TAU/12, TAU/5, 3, v3(0, 0, 0), scene);
+camera.lowerRadiusLimit = 2.1;
+camera.upperRadiusLimit = 10;
 camera.attachControl(undefined, true);
 camera.position.addInPlace(v3(-.5,0,-.5));
 
