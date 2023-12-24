@@ -4,6 +4,8 @@ import * as T from "./triangulation";
 import { MotionController, easeInOut, slerp, subdivide, zip } from "./utils";
 // import { log } from "./debug";
 
+const params = new URL(document.URL).searchParams;
+
 M.configure({
   enforceActions: "never",
   // computedRequiresReaction: false,
@@ -160,7 +162,7 @@ arc1.material = arc2.material = arc3.material =
     sideOrientation: B.VertexData.DOUBLESIDE,
   }, scene);
 
-const n = 6;
+const n = Number.parseInt(params.get("n") ?? "6");
 
 const red = B.Color3.Red();
 const green = B.Color3.Green();
@@ -450,6 +452,7 @@ const rays = new Rays(collapsed.flat(), 0);
 const baryPoints = [
   v3(1,3,2), v3(4,1,1),
   v3(6,0,0), v3(0,6,0), v3(0,0,6), v3(6,0,0)]
+  .map(p => p.scaleInPlace(n/6));
 const bary = new BarycentricCoordinates(baryPoints[0], 0);
 const sinesExpl = new SinesExplanation();
 
@@ -726,15 +729,16 @@ async function performStep() {
   step.textContent = `step ${stepNo % motions.length + 1}/${motions.length}`;
 }
 
-// Fast forward for debugging a later step
-async function skipTo(nSteps: number) {
+// Fast forward to some step
+async function skipTo(start: number) {
+  const oldValue = speed.value;
   speed.value = "1";
-  for (let i = 0; i < nSteps; i++) {
+  for (let i = 1; i < start; i++) {
     await performStep();
   }
-  speed.value = "1500";
+  speed.value = oldValue;
 }
-// skipTo(44);
+skipTo(Number.parseInt(params.get("start") ?? "0"));
 
 
 step.addEventListener("click", performStep);
