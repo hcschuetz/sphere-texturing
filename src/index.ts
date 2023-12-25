@@ -689,23 +689,8 @@ const motions: Motion[][] = [
     magentaMesh.alpha = lambda2;
     magentaMesh.vertices = lerp2(lambda1)(sineBased, geodesic);
   }]],
-  // experimental:
-  [[0, () => {
-    cyanMesh.rotation = yellowMesh.rotation = magentaMesh.rotation = v3(0,0,0);
-    // cyanMesh.alpha = yellowMesh.alpha = magentaMesh.alpha = whiteMesh.alpha = 1;
-    // cyanMesh.vertices = onParallels;
-    // cyanMesh.lines = parallels;
-    // magentaMesh.vertices = onEvenGeodesics;
-    // magentaMesh.lines = evenGeodesics;
-    yellowMesh.vertices = sineBased;
-    whiteMesh.vertices = sineBased2;
-    // const v111 = v3(1,1,1);
-    // B.CreateTube("xxx", {
-    //   path: [v111.scale(-100), v111.scale(Math.sqrt(1/3))],
-    //   radius: 0.005,
-    // }, scene);
-    // new TriangulationWithAuxLines(geodesics, geodesic, B.Color3.Red());
-  }]],
+  // TODO show sineBased2?
+  // TODO show "map x:y:z to the point whose angles (from the edges) have ratio x:y:z"
   // TODO show wireframes
   // TODO show polyhedra
   // TODO Mention icosphere?  A similar ad-hoc generalization of slerp from
