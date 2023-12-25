@@ -90,7 +90,7 @@ function createTriangulation(
 }
 
 const scene = new B.Scene(engine);
-scene.clearColor = new BABYLON.Color4(0, 0, 0, 0);
+scene.clearColor = new B.Color4(0, 0, 0, 0);
 
 const camera = new B.ArcRotateCamera("camera", TAU/12, TAU/5, 3, v3(0, 0, 0), scene);
 camera.lowerRadiusLimit = 2.1;
@@ -431,6 +431,7 @@ const geodesic = T.geodesics(n);
 const onParallels = T.parallels(n);
 const sines = T.sines(n);
 const sineBased = T.sineBased(n);
+const sineBased2 = T.sineBased2(n);
 const collapsed = T.collapsed(n);
 const onEvenGeodesics = T.evenGeodesics(n);
 const evenOnEdges = sines.map((row, i) => row.map((vertex, j) =>
@@ -684,8 +685,26 @@ const motions: Motion[][] = [
   }],
   [1, lambda => {
     const lambda1 = easeInOut(lambda);
-    magentaMesh.alpha = lambda1;
-    magentaMesh.vertices = lerp2(lambda1)(sineBased, geodesic)
+    const lambda2 = Math.sqrt(lambda);
+    magentaMesh.alpha = lambda2;
+    magentaMesh.vertices = lerp2(lambda1)(sineBased, geodesic);
+  }]],
+  // experimental:
+  [[0, () => {
+    cyanMesh.rotation = yellowMesh.rotation = magentaMesh.rotation = v3(0,0,0);
+    // cyanMesh.alpha = yellowMesh.alpha = magentaMesh.alpha = whiteMesh.alpha = 1;
+    // cyanMesh.vertices = onParallels;
+    // cyanMesh.lines = parallels;
+    // magentaMesh.vertices = onEvenGeodesics;
+    // magentaMesh.lines = evenGeodesics;
+    yellowMesh.vertices = sineBased;
+    whiteMesh.vertices = sineBased2;
+    // const v111 = v3(1,1,1);
+    // B.CreateTube("xxx", {
+    //   path: [v111.scale(-100), v111.scale(Math.sqrt(1/3))],
+    //   radius: 0.005,
+    // }, scene);
+    // new TriangulationWithAuxLines(geodesics, geodesic, B.Color3.Red());
   }]],
   // TODO show wireframes
   // TODO show polyhedra
