@@ -14,11 +14,8 @@ export const subdivide = (from: number, to: number, nSteps: number): number[] =>
 export const slerp = (from: Vector3, to: Vector3, lambda: number) =>
   Vector3.SlerpToRef(from, to, lambda, new Vector3());
 
-export const axes: Vector3[] = [
-  new Vector3(1, 0, 0),
-  new Vector3(0, 1, 0),
-  new Vector3(0, 0, 1),
-];
+  // Just to let code using lerp look analogous to code using slerp:
+export const lerp = Vector3.Lerp;
 
 export class MotionController {
   #tFrom = 0;

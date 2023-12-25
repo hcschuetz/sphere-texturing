@@ -1,5 +1,5 @@
 import { Vector3 } from "babylonjs";
-import { TAU, subdivide, axes, slerp, map2 } from "./utils";
+import { TAU, subdivide, slerp, map2, lerp, frac } from "./utils";
 
 /**
 Actually triangulations should not just be arbitrary 2-level arrays of points,
@@ -10,61 +10,56 @@ contain one point more than its successor.
 */
 export type Triangulation = Vector3[][];
 
-// We do not need the refinement here because the lines are straight anyway.
-// But we accept a refinement for compatibility with analogous functions.
-export const flat = (n: number, refinement = 1): Vector3[][] => {
-  const [X, Y, Z] = axes;
-  return subdivide(0, 1, n).map((i, ii) => {
-    const XY = Vector3.Lerp(X, Y, i);
-    const ZY = Vector3.Lerp(Z, Y, i);
-    return subdivide(0, 1, (n - ii) * refinement).map(j =>
-      Vector3.Lerp(XY, ZY, j)
-    );
-  });
+// Unit vectors
+const ex = new Vector3(1, 0, 0);
+const ey = new Vector3(0, 1, 0);
+const ez = new Vector3(0, 0, 1);
+
+const triangulate =
+  (f: (t: number, u: number) => Vector3) =>
+  (n: number, refinement = 1): Vector3[][] =>
+  subdivide(0, 1, n).map((u, j) =>
+    subdivide(0, 1, (n - j) * refinement).map(t =>
+      f(t, u)
+    )
+  );
+
+// These implementations are optimized for brevity/readability/comparability,
+// not for efficiency:
+
+export const flat = triangulate((t, u) =>
+  lerp(lerp(ex, ez, t), ey, u)
+  // lerp(lerp(ex, ey, u), lerp(ez, ey, u), t)
+)
+export const collapsed = triangulate(() =>
+  Vector3.ZeroReadOnly
+);
+export const geodesics = triangulate((t, u) =>
+  lerp(lerp(ex, ez, t), ey, u).normalize()
+);
+export const parallels = triangulate((t, u) =>
+  slerp(slerp(ex, ez, t), ey, u)
+)
+export const evenGeodesics = triangulate((t, u) =>
+  slerp(slerp(ex, ey, u), slerp(ez, ey, u), t)
+)
+export const sines = (n: number) => map2(flat(n), ({x, y, z}) =>
+  new Vector3(Math.sin(TAU/4 * x), Math.sin(TAU/4 * y), Math.sin(TAU/4 * z))
+)
+export const sineBased = (n: number) => map2(sines(n), v => v.normalize());
+
+/**
+ * Parallel projection of a point in the (1,1,1) direction
+ * onto the unit sphere
+ */
+const proj: (p: Vector3) => Vector3 = ({x, y, z}) => {
+  const lambda = (Math.sqrt(2*(x*y + x*z + y*z - x*x - y*y - z*z) + 3) - (x + y + z)) / 3;
+  return new Vector3(x + lambda, y + lambda, z + lambda);
 }
-
-export const geodesics = (n: number, refinement = 1): Vector3[][] =>
-  map2(flat(n, refinement), p => p.normalize());
-
-export const parallels = (n: number, refinement = 1): Vector3[][] =>
-  subdivide(0, 1, n).map((i, ii) => {
-    const alpha = i * TAU/4
-    const sin_alpha = Math.sin(alpha);
-    const cos_alpha = Math.cos(alpha);
-    return subdivide(0, 1, (n - ii) * refinement).map(j => {
-      const beta = j * TAU/4;
-      const sin_beta = Math.sin(beta);
-      const cos_beta = Math.cos(beta);
-      return new Vector3(
-        cos_alpha * cos_beta,
-        sin_alpha,
-        cos_alpha * sin_beta
-      );
-    });
-  });
-
-export const evenGeodesics = (n: number, refinement = 1): Vector3[][] => {
-  const [X, Y, Z] = axes;
-  return subdivide(0, 1, n).map((i, ii) => {
-    const XY = slerp(X, Y, i);
-    const ZY = slerp(Z, Y, i);
-    return subdivide(0, 1, (n - ii) * refinement).map(j =>
-      slerp(XY, ZY, j)
-    );
-  });
-}
-
-/** sin scaled to period 4 */
-const sin4 = (x: number) => Math.sin(TAU/4 * x);
-
-export const sines = (n: number): Triangulation =>
-  map2(flat(n), ({x, y, z}) => new Vector3(sin4(x), sin4(y), sin4(z)));
-
-export const sineBased = (n: number): Triangulation =>
-  map2(sines(n), v => v.normalize());
-
-export const collapsed = (n: number, refinement = 1): Vector3[][] =>
-  map2(flat(n, refinement), () => Vector3.Zero());
+/**
+ * A variant of `sineBased` using parallel instead of central projection
+ */
+export const sineBased2 = (n: number) => map2(sines(n), proj);
 
 
 export const rays = (n: number, tr: Triangulation): Vector3[][] =>
