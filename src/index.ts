@@ -446,14 +446,6 @@ class SinesExplanation {
         <span style="opacity: ${Math.max(0, Math.min(1, this.step - 5))};">
         = sin( <span style="color: yellow">z</span> · 90° )
         </span>
-      ` : this.step <= 7 ? `
-        <span style="opacity: ${Math.max(0, Math.min(1, this.step - 6))};">
-        X = sin( <span style="color: yellow">x</span> · 90° )
-        <br>
-        Y = sin( <span style="color: yellow">y</span> · 90° )
-        <br>
-        Z = sin( <span style="color: yellow">z</span> · 90° )
-        </span>
       ` : `
         <span style="opacity: ${Math.max(0, Math.min(1, this.step - 8))};">normalize(</span>
         sin( <span style="color: yellow">x</span> · 90° ) ${ex} +
@@ -496,29 +488,33 @@ const flatOnXYEdge = flat.map((row, i) => row.map((vertex, j) =>
 ));
 
 const flatExpl = new Explanation(`
-  <div style="border: 1px solid white; padding: 5px 10px; width: max-content;">
-    For each
-    <ul style="margin: 0;">
-      <li>y ≔ 0, 1/n, 2/n, ..., 1</li>
-      <li>z ≔ 0, 1/n, 2/n, ..., 1 - y</li>
-      <li>x ≔ 1 - y - z</li>
-    </ul>
-    we create a vertex at:
+<div style="opacity: 0.6;">
+  For each
+  <ul style="margin: 0;">
+    <li>y ≔ 0, 1/n, 2/n, ..., 1</li>
+    <li>z ≔ 0, 1/n, 2/n, ..., 1 - y</li>
+    <li>x ≔ 1 - y - z</li>
+  </ul>
+  create a vertex at:
   </div>
-  <br>
   y ${ey} + z ${ez} + x ${ex}
-  <br>
+  <div style="opacity: 0.6;">
   =
   lerp( lerp( ${ex}, ${ey}, y ), lerp( ${ez}, ${ey}, y ), z / (1-y) )
   <br>
   =
   lerp( lerp( ${ex}, ${ez}, z / (1-y) ), ${ey}, y )
+  </div>
 `);
 const geodesicExpl = new Explanation(`
   normalize( y ${ey} + z ${ez} + x ${ex} )
+  <div style="opacity: 0.6;">
+  =
+  normalize( lerp( lerp( ${ex}, ${ey}, y ), lerp( ${ez}, ${ey}, y ), z / (1-y) ) )
   <br>
   =
-  ...
+  normalize( lerp( lerp( ${ex}, ${ez}, z / (1-y) ), ${ey}, y ) )
+  </div>
 `);
 const parallelsExpl = new Explanation(`
   slerp( slerp( ${ex}, ${ez}, z / (1-y) ), ${ey}, y )
@@ -532,9 +528,8 @@ const yellowMesh  = new TriangulationWithAuxLines(flatLines, flat, yellow , 0);
 const magentaMesh = new TriangulationWithAuxLines(flatLines, flat, magenta, 0);
 const whiteMesh   = new TriangulationWithAuxLines(collapsedLines, evenOnEdges, B.Color3.White(), 0);
 const rays = new Rays(collapsed.flat(), 0);
-const baryPoints = [
-  v3(1,3,2), v3(4,1,1),
-  v3(6,0,0), v3(0,6,0), v3(0,0,6), v3(6,0,0)]
+const baryPoints =
+  [v3(1,3,2), v3(4,1,1), v3(6,0,0), v3(0,6,0)]
   .map(p => p.scaleInPlace(n/6));
 const bary = new BarycentricCoordinates(baryPoints[0], 0);
 const sinesExpl = new SinesExplanation();
@@ -664,36 +659,15 @@ const motions: Motion[][] = [
     cyanMesh.alpha = Math.sqrt(lambda);
     rotateTo(cyanMesh, -easeInOut(lambda));
   }]],
-  // ***** parallels => evenOnEdges *****
+  // ***** parallels => ... *****
   [[0, () => {
     whiteMesh.vertices = evenOnEdges;
-    whiteMesh.alpha = 1;
   }],
   [0.5, lambda => {
     cyanMesh.alpha = yellowMesh.alpha = magentaMesh.alpha = 1 - lambda;
     parallelsExpl.alpha = 1 - lambda;
+    whiteMesh.alpha = lambda;
   }]],
-  [[0, () => {
-    cyanMesh.lines = yellowMesh.lines = magentaMesh.lines = flatLines;
-    cyanMesh.vertices = yellowMesh.vertices = magentaMesh.vertices = collapsed;
-    rotateTo(magentaMesh, 0);
-    rotateTo(yellowMesh, 1);
-    rotateTo(cyanMesh, -1);
-  }],
-  [.5, lambda => {
-    cyanMesh.alpha = yellowMesh.alpha = magentaMesh.alpha = lambda;
-  }]],
-  [[1, lambda => bary.alpha = lambda]],
-  ...baryPoints.slice(1).map((p, i) =>
-    [[1, lambda => {
-      bary.coords = V3.Lerp(baryPoints[i], p, easeInOut(lambda));
-    }] as Motion]
-  ),
-  [[0.5, lambda => {
-    cyanMesh.alpha = yellowMesh.alpha = magentaMesh.alpha =
-    bary.alpha = 1 - lambda;
-  }]],
-  // ***** evenOnEdges => ... *****
   [[0, () => {
     cyanMesh.rotation = yellowMesh.rotation = V3.ZeroReadOnly;
     yellowMesh.vertices = flatOnEdges;
@@ -737,9 +711,6 @@ const motions: Motion[][] = [
     yellowMesh.alpha = cyanMesh.alpha = magentaMesh.alpha = 1 - lambda;
     whiteMesh.vertices = lerp2(easeInOut(lambda))(evenOnEdges, sines);
   }]],
-  [[.5, lambda => sinesExpl.alpha = 1 - lambda],
-   [0, () => sinesExpl.step = 8],
-   [1, lambda => sinesExpl.alpha = lambda]],
   // ***** sines => sineBased *****
   [[1, lambda => {
     rays.alpha = lambda;
@@ -767,6 +738,29 @@ const motions: Motion[][] = [
   }],
   [0, lambda => {
     magentaMesh.alpha = cyanMesh.alpha = 0;
+  }]],
+  // ***** barycentric coordinates *****
+  // TODO transition
+  [[0, () => {
+    cyanMesh.lines = yellowMesh.lines = magentaMesh.lines = flatLines;
+    cyanMesh.vertices = yellowMesh.vertices = magentaMesh.vertices = collapsed;
+    rotateTo(magentaMesh, 0);
+    rotateTo(yellowMesh, 1);
+    rotateTo(cyanMesh, -1);
+  }],
+  [.5, lambda => {
+    sinesExpl.alpha = whiteMesh.alpha = 1 - lambda;
+    cyanMesh.alpha = yellowMesh.alpha = magentaMesh.alpha = lambda;
+  }]],
+  [[1, lambda => bary.alpha = lambda]],
+  ...baryPoints.slice(1).map((p, i) =>
+    [[1, lambda => {
+      bary.coords = V3.Lerp(baryPoints[i], p, easeInOut(lambda));
+    }] as Motion]
+  ),
+  [[0.5, lambda => {
+    cyanMesh.alpha = yellowMesh.alpha = magentaMesh.alpha =
+    bary.alpha = 1 - lambda;
   }]],
   // ***** sineBased => asinBased *****
   // TODO (WORK IN PROGRESS)
