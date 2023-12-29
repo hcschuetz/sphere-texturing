@@ -254,10 +254,10 @@ class Rays {
       alpha: M.observable,
     });
 
-    const color = new B.Color3(.6,.6,.6);
+    const color = new B.Color3(.5,.5,.5);
     const material = createStandardMaterial("rayMat", {
       diffuseColor: color,
-      emissiveColor: color,
+      // emissiveColor: color,
     }, scene);
     M.autorun(() => material.alpha = this.alpha);
 
