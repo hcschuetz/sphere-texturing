@@ -613,15 +613,15 @@ const motions: Motion[][] = [
   [[1, lambda => {
     magentaMesh.alpha = 1;
     const lambda1 = easeInOut(lambda);
-    magentaMesh.lines = lerp2(lambda1)(geodesics, parallels);
+    magentaMesh.lines = lerp2(lambda1)(geodesics, evenGeodesics);
     geodesicExpl.alpha = 1 - lambda;
-    parallelsExpl.alpha = lambda;
+    onEvenGeodesicsExpl.alpha = lambda;
   }]],
   [[1, lambda => {
     const lambda1 = easeInOut(lambda);
-    magentaMesh.vertices = lerp2(lambda1)(geodesic, onParallels);
+    magentaMesh.vertices = lerp2(lambda1)(geodesic, onEvenGeodesics);
   }]],
-  // ***** parallels *****
+  // ***** evenGeodesics *****
   [[0, () => {
     cyanMesh.lines = yellowMesh.lines = magentaMesh.lines;
     cyanMesh.vertices = yellowMesh.vertices = magentaMesh.vertices;
@@ -640,19 +640,19 @@ const motions: Motion[][] = [
     yellowMesh.alpha = Math.sqrt(1 - lambda);
     cyanMesh.alpha = Math.sqrt(1 - lambda);
   }]],
-  // ***** parallels => evenGeodesics *****
+  // ***** evenGeodesics => parallels *****
   [[1, lambda => {
     magentaMesh.alpha = 1;
     const lambda1 = easeInOut(lambda);
-    magentaMesh.lines = lerp2(lambda1)(parallels, evenGeodesics);
-    parallelsExpl.alpha = 1 - lambda;
-    onEvenGeodesicsExpl.alpha = lambda;
+    magentaMesh.lines = lerp2(lambda1)(evenGeodesics, parallels);
+    onEvenGeodesicsExpl.alpha = 1 - lambda;
+    parallelsExpl.alpha = lambda;
   }]],
   [[1, lambda => {
     const lambda1 = easeInOut(lambda);
-    magentaMesh.vertices = lerp2(lambda1)(onParallels, onEvenGeodesics);
+    magentaMesh.vertices = lerp2(lambda1)(onEvenGeodesics, onParallels);
   }]],
-  // ***** evenGeodesics *****
+  // ***** parallels *****
   [[0, () => {
     cyanMesh.lines = yellowMesh.lines = magentaMesh.lines;
     cyanMesh.vertices = yellowMesh.vertices = magentaMesh.vertices;
@@ -665,14 +665,14 @@ const motions: Motion[][] = [
     cyanMesh.alpha = Math.sqrt(lambda);
     rotateTo(cyanMesh, -easeInOut(lambda));
   }]],
-  // ***** evenGeodesics => evenOnEdges *****
+  // ***** parallels => evenOnEdges *****
   [[0, () => {
     whiteMesh.vertices = evenOnEdges;
     whiteMesh.alpha = 1;
   }],
   [0.5, lambda => {
     cyanMesh.alpha = yellowMesh.alpha = magentaMesh.alpha = 1 - lambda;
-    onEvenGeodesicsExpl.alpha = 1 - lambda;
+    parallelsExpl.alpha = 1 - lambda;
   }]],
   [[0, () => {
     cyanMesh.lines = yellowMesh.lines = magentaMesh.lines = flatLines;
