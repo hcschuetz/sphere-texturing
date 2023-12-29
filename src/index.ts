@@ -99,11 +99,10 @@ const advancedTexture = G.AdvancedDynamicTexture.CreateFullscreenUI("myUI", true
 advancedTexture.rootContainer.scaleX = window.devicePixelRatio;
 advancedTexture.rootContainer.scaleY = window.devicePixelRatio;
 
-const camera = new B.ArcRotateCamera("camera", TAU/12, TAU/5, 3, v3(0, 0, 0), scene);
+const camera = new B.ArcRotateCamera("camera", .15 * TAU, .2 * TAU, 3, v3(0, 0, 0), scene);
 camera.lowerRadiusLimit = 2.1;
 camera.upperRadiusLimit = 10;
 camera.attachControl(undefined, true);
-camera.position.addInPlace(v3(-.5,0,-.5));
 
 const light = new B.HemisphericLight('light1', v3(0, 1, 0), scene);
 light.intensity = 0.8;
