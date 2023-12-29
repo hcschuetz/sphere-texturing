@@ -1,4 +1,4 @@
-import { Vector3 } from "babylonjs";
+import { Vector3 } from "@babylonjs/core";
 
 export const TAU = 2 * Math.PI;
 

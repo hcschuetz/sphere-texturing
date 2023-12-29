@@ -9,7 +9,8 @@
   "author": "Heribert Schütz",
   "license": "MIT",
   "dependencies": {
-    "babylonjs": "^6.34.1",
+    "@babylonjs/core": "^6.36.0",
+    "@babylonjs/gui": "^6.36.0",
     "mobx": "^6.12.0"
   },
   "devDependencies": {

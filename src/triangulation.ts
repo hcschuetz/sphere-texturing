@@ -1,4 +1,4 @@
-import { Vector3 } from "babylonjs";
+import { Vector3 } from "@babylonjs/core";
 import { TAU, subdivide, slerp, map2, lerp, frac } from "./utils";
 
 /**
@@ -43,10 +43,15 @@ export const parallels = triangulate((t, u) =>
 export const evenGeodesics = triangulate((t, u) =>
   slerp(slerp(ex, ey, u), slerp(ez, ey, u), t)
 )
+/**
+ * Not a sphere triangulation as non-edge face points are mapped to some point
+ * within the sphere.
+ */
 export const sines = (n: number) => map2(flat(n), ({x, y, z}) =>
   new Vector3(Math.sin(TAU/4 * x), Math.sin(TAU/4 * y), Math.sin(TAU/4 * z))
 )
 export const sineBased = (n: number) => map2(sines(n), v => v.normalize());
+
 
 /**
  * Parallel projection of a point in the (1,1,1) direction
@@ -61,6 +66,39 @@ const proj: (p: Vector3) => Vector3 = ({x, y, z}) => {
  */
 export const sineBased2 = (n: number) => map2(sines(n), proj);
 
+
+const baryNorm = (p: Vector3): number => p.x + p.y + p.z;
+const baryNormalizeInPlace = (p: Vector3): Vector3 => p.scaleInPlace(1 / baryNorm(p));
+
+/**
+ * For a given vector p on the octahedron face (i.e., "baryNormalized"),
+ * iteratively find a unit vector (x, y, z) such that the angles
+ * `asin(x), asin(y), asin(z)` have a barycentric ratio
+ * `asin(x) : asin(y) : asin(z)` equal to
+ * `p.x : p.y : p.z`.
+ */
+function findSineRatio(p: Vector3): Vector3 {
+  // `p.normalizeToNew()` or even `new Vector3(1,1,1).normalize()` as an
+  // initial gues would work, but starting from our "sineBased" estimation
+  // saves a few iterations and leads to exact values along the edges:
+  const guess = new Vector3(
+    Math.sin(TAU/4 * p.x), Math.sin(TAU/4 * p.y), Math.sin(TAU/4 * p.z),
+  ).normalize();
+  for (let i = 0; i < 30; i++) {
+    const angles = new Vector3(Math.asin(guess.x), Math.asin(guess.y), Math.asin(guess.z));
+    baryNormalizeInPlace(angles);
+    const offset = angles.subtract(p);
+    if (offset.length() < 1e-10) {
+      // console.log("success", i, p, angles)
+      return guess;
+    }
+    baryNormalizeInPlace(guess).subtractInPlace(offset).normalize()
+  }
+  console.warn("findSineRatio: iteration failed");
+  return guess;
+}
+export const asinBased = (n: number, refinement?: number) =>
+  map2(flat(n, refinement), findSineRatio);
 
 export const rays = (n: number, tr: Triangulation): Vector3[][] =>
   tr.flatMap(points => points.map(point => [Vector3.ZeroReadOnly, point]));

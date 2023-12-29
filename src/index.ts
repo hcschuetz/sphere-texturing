@@ -1,4 +1,5 @@
-import * as B from "babylonjs";
+import * as B from "@babylonjs/core";
+import * as G from "@babylonjs/gui";
 import * as M from "mobx";
 import * as T from "./triangulation";
 import { MotionController, easeInOut, slerp, subdivide, zip } from "./utils";
@@ -68,7 +69,9 @@ function createTriangulation(
     subdivide(0, 1, n).flatMap((i, ii) =>
       subdivide(0, 1, (n - ii)).map((j, jj) => {
         const vertex = B.MeshBuilder.CreateIcoSphere(`vertex(${ii},${jj})`, {
-          radius: 0.015,
+          radius: 0.01,
+          subdivisions: 2,
+          flat: false,
         }, scene);
         linkToParent(vertex);
         vertex.position = V3.ZeroReadOnly;
@@ -92,6 +95,10 @@ function createTriangulation(
 const scene = new B.Scene(engine);
 scene.clearColor = new B.Color4(0, 0, 0, 0);
 
+const advancedTexture = G.AdvancedDynamicTexture.CreateFullscreenUI("myUI", true, scene);
+advancedTexture.rootContainer.scaleX = window.devicePixelRatio;
+advancedTexture.rootContainer.scaleY = window.devicePixelRatio;
+
 const camera = new B.ArcRotateCamera("camera", TAU/12, TAU/5, 3, v3(0, 0, 0), scene);
 camera.lowerRadiusLimit = 2.1;
 camera.upperRadiusLimit = 10;
@@ -109,12 +116,23 @@ light3.intensity = 0.5;
 
 ([[1,0,0], [0,1,0], [0,0,1]] as [number, number, number][])
 .forEach((dims, i) => {
-  const color = new B.Color4(...dims);
-  // While other lines look better as tubes, the axes look better as lines.
-  B.MeshBuilder.CreateLines("axis-" + i, {
-    points: [v3(...dims).scaleInPlace(-1.5), v3(...dims).scaleInPlace(1.5)],
-    colors: [color, color],
+  const color = new B.Color3(...dims);
+  const arrow = B.MeshBuilder.CreateTube("arrow-" + i, {
+    path: [0, .9, .9, 1].map(s => v3(...dims).scaleInPlace(s)),
+    radiusFunction: i => [.008, .008, .024, 0][i],
   }, scene);
+  arrow.material = createStandardMaterial("arrowMat", {
+    diffuseColor: color,
+    // emissiveColor: color,
+  }, scene);
+
+  const labelPos = new B.TransformNode("labelPos" + i, scene);
+  labelPos.position = v3(...dims).scaleInPlace(1.1);
+  const label = new G.TextBlock("label" + i, "xyz"[i]);
+  label.color = "#" + dims.map(dim => "0f"[dim]).join("");
+  label.fontSize = 24;
+  advancedTexture.addControl(label);
+  label.linkWithMesh(labelPos);
 });
 
 // Allow to hide some vertices temporarily inside the origin
@@ -256,6 +274,34 @@ class Rays {
         instance: ray,
         path: [V3.ZeroReadOnly, this.ends[i]],
       }));
+    })
+  }
+}
+
+const sub = (text: string) => `<sub>${text}</sub>`;
+const ex = "e" + sub("x");
+const ey = "e" + sub("y");
+const ez = "e" + sub("z");
+
+class Explanation {
+  alpha = 0;
+
+  constructor(html: string) {
+    M.makeObservable(this, {alpha: M.observable});
+    const div = document.createElement("div");
+    Object.assign(div.style, {
+      position: "fixed",
+      bottom: "20px",
+      left: "20px",
+      color: "white",
+      lineHeight: "1.6",
+      fontFamily: "Arial, Helvetica, sans-serif",
+    });
+    document.body.append(div);
+    div.innerHTML = html;
+    M.autorun(() => {
+      div.style.opacity = this.alpha.toString();
+      div.style.display = this.alpha ? "" : "none";
     })
   }
 }
@@ -410,10 +456,11 @@ class SinesExplanation {
         Z = sin( <span style="color: yellow">z</span> · 90° )
         </span>
       ` : `
-        <span style="opacity: ${Math.max(0, Math.min(1, this.step - 8))};">normalize</span>(
-        sin( <span style="color: yellow">x</span> · 90° ),
-        sin( <span style="color: yellow">y</span> · 90° ),
-        sin( <span style="color: yellow">z</span> · 90° ) )
+        <span style="opacity: ${Math.max(0, Math.min(1, this.step - 8))};">normalize(</span>
+        sin( <span style="color: yellow">x</span> · 90° ) ${ex} +
+        sin( <span style="color: yellow">y</span> · 90° ) ${ey} +
+        sin( <span style="color: yellow">z</span> · 90° ) ${ez}
+        <span style="opacity: ${Math.max(0, Math.min(1, this.step - 8))};">)</span>
       `;
     });
   }
@@ -425,6 +472,7 @@ const geodesics = T.geodesics(n, refinement);
 const parallels = T.parallels(n, refinement);
 const evenGeodesics = T.evenGeodesics(n, refinement);
 const collapsedLines = T.collapsed(n, refinement);
+const asinBasedLines = T.asinBased(n, refinement);
 
 const flat = T.flat(n);
 const geodesic = T.geodesics(n);
@@ -432,6 +480,7 @@ const onParallels = T.parallels(n);
 const sines = T.sines(n);
 const sineBased = T.sineBased(n);
 const sineBased2 = T.sineBased2(n);
+const asinBased = T.asinBased(n);
 const collapsed = T.collapsed(n);
 const onEvenGeodesics = T.evenGeodesics(n);
 const evenOnEdges = sines.map((row, i) => row.map((vertex, j) =>
@@ -446,6 +495,38 @@ const evenOnXYEdge = sines.map((row, i) => row.map((vertex, j) =>
 const flatOnXYEdge = flat.map((row, i) => row.map((vertex, j) =>
   j === 0 ? vertex : V3.ZeroReadOnly
 ));
+
+const flatExpl = new Explanation(`
+  <div style="border: 1px solid white; padding: 5px 10px; width: max-content;">
+    For each
+    <ul style="margin: 0;">
+      <li>y ≔ 0, 1/n, 2/n, ..., 1</li>
+      <li>z ≔ 0, 1/n, 2/n, ..., 1 - y</li>
+      <li>x ≔ 1 - y - z</li>
+    </ul>
+    we create a vertex at:
+  </div>
+  <br>
+  y ${ey} + z ${ez} + x ${ex}
+  <br>
+  =
+  lerp( lerp( ${ex}, ${ey}, y ), lerp( ${ez}, ${ey}, y ), z / (1-y) )
+  <br>
+  =
+  lerp( lerp( ${ex}, ${ez}, z / (1-y) ), ${ey}, y )
+`);
+const geodesicExpl = new Explanation(`
+  normalize( y ${ey} + z ${ez} + x ${ex} )
+  <br>
+  =
+  ...
+`);
+const parallelsExpl = new Explanation(`
+  slerp( slerp( ${ex}, ${ez}, z / (1-y) ), ${ey}, y )
+`);
+const onEvenGeodesicsExpl = new Explanation(`
+  slerp( slerp(${ex}, ${ey}, y ), slerp( ${ez}, ${ey}, y ), z / (1-y) )
+`);
 
 const cyanMesh    = new TriangulationWithAuxLines(flatLines, flat, cyan   , 0);
 const yellowMesh  = new TriangulationWithAuxLines(flatLines, flat, yellow , 0);
@@ -474,7 +555,10 @@ const motions: Motion[][] = [
     magentaMesh.lines = yellowMesh.lines = cyanMesh.lines = flatLines;
     magentaMesh.vertices = yellowMesh.vertices = cyanMesh.vertices = flat;
   }],
-  [1, lambda => magentaMesh.alpha = lambda]],
+  [0.5, lambda => {
+    magentaMesh.alpha = lambda;
+    flatExpl.alpha = lambda;
+  }]],
   // ***** flat *****
   [[1, lambda => {
     yellowMesh.alpha = Math.sqrt(lambda);
@@ -500,6 +584,8 @@ const motions: Motion[][] = [
     const lambda1 = easeInOut(lambda);
     magentaMesh.lines = lerp2(lambda1)(flatLines, geodesics);
     magentaMesh.vertices = lerp2(lambda1)(flat, geodesic);
+    flatExpl.alpha = 1 - lambda;
+    geodesicExpl.alpha = lambda;
   }]],
   [[.5, lambda => {
     rays.alpha = 1 - lambda;
@@ -528,6 +614,8 @@ const motions: Motion[][] = [
     magentaMesh.alpha = 1;
     const lambda1 = easeInOut(lambda);
     magentaMesh.lines = lerp2(lambda1)(geodesics, parallels);
+    geodesicExpl.alpha = 1 - lambda;
+    parallelsExpl.alpha = lambda;
   }]],
   [[1, lambda => {
     const lambda1 = easeInOut(lambda);
@@ -557,6 +645,8 @@ const motions: Motion[][] = [
     magentaMesh.alpha = 1;
     const lambda1 = easeInOut(lambda);
     magentaMesh.lines = lerp2(lambda1)(parallels, evenGeodesics);
+    parallelsExpl.alpha = 1 - lambda;
+    onEvenGeodesicsExpl.alpha = lambda;
   }]],
   [[1, lambda => {
     const lambda1 = easeInOut(lambda);
@@ -582,6 +672,7 @@ const motions: Motion[][] = [
   }],
   [0.5, lambda => {
     cyanMesh.alpha = yellowMesh.alpha = magentaMesh.alpha = 1 - lambda;
+    onEvenGeodesicsExpl.alpha = 1 - lambda;
   }]],
   [[0, () => {
     cyanMesh.lines = yellowMesh.lines = magentaMesh.lines = flatLines;
@@ -678,19 +769,26 @@ const motions: Motion[][] = [
   [0, lambda => {
     magentaMesh.alpha = cyanMesh.alpha = 0;
   }]],
-  // ***** for comparison: geodesic
-  [[0, () => {
-    magentaMesh.lines = collapsedLines;
-    magentaMesh.vertices = geodesic;
-  }],
-  [1, lambda => {
-    const lambda1 = easeInOut(lambda);
-    const lambda2 = Math.sqrt(lambda);
-    magentaMesh.alpha = lambda2;
-    magentaMesh.vertices = lerp2(lambda1)(sineBased, geodesic);
-  }]],
+  // ***** sineBased => asinBased *****
+  // TODO (WORK IN PROGRESS)
+  // - angular barycentric coordinates of a non-grid point on empty sphere
+  // - flatten
+  // - map to octahedron face
+  // - adjust to a grid point
+  // - map back to sphere
+  // [[1, lambda => {
+  //   const lambda1 = easeInOut(lambda);
+  //   const lambda2 = Math.sqrt(lambda);
+  //   // magentaMesh.alpha = lambda2;
+  //   // magentaMesh.vertices = lerp2(lambda1)(sineBased, geodesic);
+  //   // whiteMesh.alpha = 0;
+  //   yellowMesh.rotation = V3.ZeroReadOnly;
+  //   yellowMesh.alpha = lambda2;
+  //   yellowMesh.lines = asinBasedLines;
+  //   yellowMesh.vertices = lerp2(lambda1)(sineBased, asinBased);
+  //   sinesExpl.alpha = 1 - lambda;
+  // }]],
   // TODO show sineBased2?
-  // TODO show "map x:y:z to the point whose angles (from the edges) have ratio x:y:z"
   // TODO show wireframes
   // TODO show polyhedra
   // TODO Mention icosphere?  A similar ad-hoc generalization of slerp from
