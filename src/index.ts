@@ -2,7 +2,7 @@ import * as B from "@babylonjs/core";
 import * as G from "@babylonjs/gui";
 import * as M from "mobx";
 import * as T from "./triangulation";
-import { MotionController, easeInOut, slerp, subdivide, zip } from "./utils";
+import { MotionController, easeInOut, radToDeg, slerp, subdivide, zip } from "./utils";
 // import { log } from "./debug";
 
 const params = new URL(document.URL).searchParams;
@@ -392,6 +392,111 @@ class BarycentricCoordinates {
   }
 }
 
+class AngularBarycentricCoordinates {
+  constructor(
+    public pos: V3,
+    public alpha: number,
+  ) {
+    M.makeObservable(this, {
+      pos: M.observable,
+      alpha: M.observable,
+    });
+
+    const div = document.createElement("div");
+    Object.assign(div.style, {
+      position: "fixed",
+      bottom: "20px",
+      left: "20px",
+      color: "white",
+      lineHeight: "1.6",
+      fontFamily: "Arial, Helvetica, sans-serif",
+    });
+    document.body.append(div);
+    M.autorun(() => {
+      div.style.opacity = this.alpha.toString();
+      div.style.display = this.alpha ? "" : "none";
+    });
+    M.autorun(() => {
+      const {pos} = this;
+      const angles = v3(Math.asin(pos.x), Math.asin(pos.y), Math.asin(pos.z));
+      const normalized = angles.scale(1 / (angles.x + angles.y + angles.z));
+      div.innerHTML = `
+        <span style="text-decoration: underline">Angular Barycentric Coordinates</span>
+        <br>
+        not normalized (sum ${radToDeg(angles.x + angles.y + angles.z).toFixed(1)}°):
+        <br>
+        <span style="
+          border-radius: 4px;
+          padding: 6px 8px;
+          background-color: #ccc;
+          color: #000;
+        ">
+          <b style="color: red"  >${radToDeg(angles.x).toFixed(1)}°</b> :
+          <b style="color: green">${radToDeg(angles.y).toFixed(1)}°</b> :
+          <b style="color: blue" >${radToDeg(angles.z).toFixed(1)}°</b>
+        </span>
+        <div style="height: 0.3ex;"></div>
+        normalized (sum 1):
+        <br>
+        <span style="
+          border-radius: 4px;
+          padding: 6px;
+          background-color: #ccc;
+          color: #000;
+        ">
+          <b style="color: red"  >${normalized.x.toFixed(2)}</b> :
+          <b style="color: green">${normalized.y.toFixed(2)}</b> :
+          <b style="color: blue" >${normalized.z.toFixed(2)}</b>
+        </span>
+        `;
+    });
+
+    const pointMaterial = createStandardMaterial("baryMat", {
+    }, scene);
+    M.autorun(() => pointMaterial.alpha = this.alpha);
+    const point = B.MeshBuilder.CreateIcoSphere("ABC_point", {
+      radius: 0.015,
+    }, scene);
+    point.material = pointMaterial;
+    M.autorun(() => point.position = this.pos);
+
+    [red, green, blue].forEach((color, idx) => {
+      const material = createStandardMaterial("baryMat", {
+        diffuseColor: color,
+        emissiveColor: color,
+      }, scene);
+      M.autorun(() => material.alpha = this.alpha);
+      const arcSteps = 20;
+      const ruler = B.CreateTube("angular_ruler", {
+        updatable: true,
+        path: Array.from({length: arcSteps + 1}, () => V3.ZeroReadOnly),
+        radius: 0.008,
+        tessellation: 6,
+      }, scene);
+      ruler.material = material;
+      const basePoint = B.MeshBuilder.CreateIcoSphere("base" + idx, {
+        radius: 0.015,
+      }, scene);
+      basePoint.material = pointMaterial;
+      M.autorun(() => {
+        const {pos} = this;
+        const eps = 1e-5; // almost but not quite 0 to avoid division by 0
+        let base: V3 =
+          idx === 0 ? v3(0, pos.y + eps, pos.z + eps).normalize() :
+          idx === 1 ? v3(pos.x + eps, 0, pos.z + eps).normalize() :
+          idx === 2 ? v3(pos.x + eps, pos.y + eps, 0).normalize() :
+          (() => { throw new Error("unexpected idx"); })();
+        console.log("ABC", pos, "xyz"[idx] + "=" + idx, base);
+        basePoint.position = base;
+        B.CreateTube("ruler", {
+          instance: ruler,
+          path: Array.from({length: arcSteps + 1}, (_, i) => slerp(pos, base, i/arcSteps)),
+        }, scene);
+      });
+    })
+  }
+}
+
 class SinesExplanation {
   step = 0;
   alpha = 0;
@@ -529,10 +634,12 @@ const magentaMesh = new TriangulationWithAuxLines(flatLines, flat, magenta, 0);
 const whiteMesh   = new TriangulationWithAuxLines(collapsedLines, evenOnEdges, B.Color3.White(), 0);
 const rays = new Rays(collapsed.flat(), 0);
 const baryPoints =
-  [v3(1,3,2), v3(4,1,1), v3(6,0,0), v3(0,6,0)]
+  [v3(1,3,2), v3(4,1,1), v3(6,0,0), v3(2,4,0), v3(2,2,2)]
   .map(p => p.scaleInPlace(n/6));
 const bary = new BarycentricCoordinates(baryPoints[0], 0);
 const sinesExpl = new SinesExplanation();
+const angBaryPoints = baryPoints.map(p => p.normalizeToNew());
+const angBary = new AngularBarycentricCoordinates(angBaryPoints[0], 0);
 
 
 /** Lerp between two V3[][] (of equal shape) */
@@ -762,6 +869,12 @@ const motions: Motion[][] = [
     cyanMesh.alpha = yellowMesh.alpha = magentaMesh.alpha =
     bary.alpha = 1 - lambda;
   }]],
+  [[1, lambda => angBary.alpha = lambda]],
+  ...angBaryPoints.slice(1).map((p, i) =>
+    [[1, lambda => {
+      angBary.pos = slerp(angBaryPoints[i], p, easeInOut(lambda));
+    }] as Motion]
+  ),
   // ***** sineBased => asinBased *****
   // TODO (WORK IN PROGRESS)
   // - angular barycentric coordinates of a non-grid point on empty sphere
