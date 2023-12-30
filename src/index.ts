@@ -345,7 +345,8 @@ class BarycentricCoordinates {
         ">
           <b style="color: red"  >${coords.x.toFixed(2)}</b> :
           <b style="color: green">${coords.y.toFixed(2)}</b> :
-          <b style="color: blue" >${coords.z.toFixed(2)}</b></span>
+          <b style="color: blue" >${coords.z.toFixed(2)}</b>
+        </span>
         <div style="height: 0.3ex;"></div>
         normalized (sum 1):
         <br>
@@ -357,7 +358,8 @@ class BarycentricCoordinates {
         ">
           <b style="color: red"  >${point.x.toFixed(2)}</b> :
           <b style="color: green">${point.y.toFixed(2)}</b> :
-          <b style="color: blue" >${point.z.toFixed(2)}</b></span>
+          <b style="color: blue" >${point.z.toFixed(2)}</b>
+        </span>
         `;
     });
 
