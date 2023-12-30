@@ -488,7 +488,6 @@ class AngularBarycentricCoordinates {
           idx === 1 ? v3(pos.x + eps, 0, pos.z + eps).normalize() :
           idx === 2 ? v3(pos.x + eps, pos.y + eps, 0).normalize() :
           (() => { throw new Error("unexpected idx"); })();
-        console.log("ABC", pos, "xyz"[idx] + "=" + idx, base);
         basePoint.position = base;
         B.CreateTube("ruler", {
           instance: ruler,
