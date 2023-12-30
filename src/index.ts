@@ -380,7 +380,7 @@ class BarycentricCoordinates {
         const {coords} = this;
         // barycentric (not Euclidian!) normalization:
         const point = coords.scale(1 / (coords.x + coords.y + coords.z));
-        let base: V3 =
+        const base: V3 =
           idx === 0 ? v3(0, point.y + point.x / 2, point.z + point.x / 2) :
           idx === 1 ? v3(point.x + point.y / 2, 0, point.z + point.y / 2) :
           idx === 2 ? v3(point.x + point.z / 2, point.y + point.z / 2, 0) :
@@ -397,11 +397,13 @@ class BarycentricCoordinates {
 class AngularBarycentricCoordinates {
   constructor(
     public pos: V3,
-    public alpha: number,
+    public alpha = 0,
+    public flatness = 0,
   ) {
     M.makeObservable(this, {
       pos: M.observable,
       alpha: M.observable,
+      flatness: M.observable,
     });
 
     const div = document.createElement("div");
@@ -453,6 +455,15 @@ class AngularBarycentricCoordinates {
         `;
     });
 
+    const angles = M.computed(() => {
+      const {pos} = this;
+      return v3(Math.asin(pos.x), Math.asin(pos.y), Math.asin(pos.z))
+    });
+    const normalized = M.computed(() => {
+      const anglesVal = angles.get();
+      return anglesVal.scale(1 / (anglesVal.x + anglesVal.y + anglesVal.z))
+    });
+
     const pointMaterial = createStandardMaterial("baryMat", {
     }, scene);
     M.autorun(() => pointMaterial.alpha = this.alpha);
@@ -460,7 +471,7 @@ class AngularBarycentricCoordinates {
       radius: 0.015,
     }, scene);
     point.material = pointMaterial;
-    M.autorun(() => point.position = this.pos);
+    M.autorun(() => point.position = V3.Lerp(this.pos, normalized.get(), this.flatness));
 
     [red, green, blue].forEach((color, idx) => {
       const material = createStandardMaterial("baryMat", {
@@ -483,15 +494,26 @@ class AngularBarycentricCoordinates {
       M.autorun(() => {
         const {pos} = this;
         const eps = 1e-5; // almost but not quite 0 to avoid division by 0
-        let base: V3 =
+        const base: V3 =
           idx === 0 ? v3(0, pos.y + eps, pos.z + eps).normalize() :
           idx === 1 ? v3(pos.x + eps, 0, pos.z + eps).normalize() :
           idx === 2 ? v3(pos.x + eps, pos.y + eps, 0).normalize() :
           (() => { throw new Error("unexpected idx"); })();
-        basePoint.position = base;
+        const normalizedVal = normalized.get();
+        const baseFlat: V3 =
+          idx === 0 ? v3(0, normalizedVal.y + normalizedVal.x / 2, normalizedVal.z + normalizedVal.x / 2) :
+          idx === 1 ? v3(normalizedVal.x + normalizedVal.y / 2, 0, normalizedVal.z + normalizedVal.y / 2) :
+          idx === 2 ? v3(normalizedVal.x + normalizedVal.z / 2, normalizedVal.y + normalizedVal.z / 2, 0) :
+          (() => { throw new Error("unexpected idx"); })();
+        const baseMix = V3.Lerp(base, baseFlat, this.flatness);
+        basePoint.position = baseMix;
         B.CreateTube("ruler", {
           instance: ruler,
-          path: Array.from({length: arcSteps + 1}, (_, i) => slerp(pos, base, i/arcSteps)),
+          path: Array.from({length: arcSteps + 1}, (_, i) => V3.Lerp(
+            slerp(pos, base, i/arcSteps),
+            V3.Lerp(normalizedVal, baseFlat, i/arcSteps),
+            this.flatness,
+          )),
         }, scene);
       });
     })
@@ -635,12 +657,12 @@ const magentaMesh = new TriangulationWithAuxLines(flatLines, flat, magenta, 0);
 const whiteMesh   = new TriangulationWithAuxLines(collapsedLines, evenOnEdges, B.Color3.White(), 0);
 const rays = new Rays(collapsed.flat(), 0);
 const baryPoints =
-  [v3(1,3,2), v3(4,1,1), v3(6,0,0), v3(2,4,0), v3(2,2,2)]
+  [v3(1,3,2), v3(4,1,1), v3(6,0,0), v3(2,4,0), v3(1,2,3)]
   .map(p => p.scaleInPlace(n/6));
 const bary = new BarycentricCoordinates(baryPoints[0], 0);
 const sinesExpl = new SinesExplanation();
 const angBaryPoints = baryPoints.map(p => p.normalizeToNew());
-const angBary = new AngularBarycentricCoordinates(angBaryPoints[0], 0);
+const angBary = new AngularBarycentricCoordinates(angBaryPoints[0]);
 
 
 /** Lerp between two V3[][] (of equal shape) */
@@ -870,41 +892,38 @@ const motions: Motion[][] = [
     cyanMesh.alpha = yellowMesh.alpha = magentaMesh.alpha =
     bary.alpha = 1 - lambda;
   }]],
+  // ***** angular barycentric coordinates *****
   [[1, lambda => angBary.alpha = lambda]],
   ...angBaryPoints.slice(1).map((p, i) =>
     [[1, lambda => {
       angBary.pos = slerp(angBaryPoints[i], p, easeInOut(lambda));
     }] as Motion]
   ),
-  // ***** sineBased => asinBased *****
-  // TODO (WORK IN PROGRESS)
-  // - angular barycentric coordinates of a non-grid point on empty sphere
-  // - flatten
-  // - map to octahedron face
-  // - adjust to a grid point
-  // - map back to sphere
-  // [[1, lambda => {
-  //   const lambda1 = easeInOut(lambda);
-  //   const lambda2 = Math.sqrt(lambda);
-  //   // magentaMesh.alpha = lambda2;
-  //   // magentaMesh.vertices = lerp2(lambda1)(sineBased, geodesic);
-  //   // whiteMesh.alpha = 0;
-  //   yellowMesh.rotation = V3.ZeroReadOnly;
-  //   yellowMesh.alpha = lambda2;
-  //   yellowMesh.lines = asinBasedLines;
-  //   yellowMesh.vertices = lerp2(lambda1)(sineBased, asinBased);
-  //   sinesExpl.alpha = 1 - lambda;
-  // }]],
+  [[1, lambda => angBary.flatness = easeInOut(lambda)]],
+  [[0, () => {
+    whiteMesh.lines = collapsedLines;
+    whiteMesh.vertices = flat;
+  }],
+  [.5, lambda => whiteMesh.alpha = lambda]],
+  [[1, lambda => {
+    const lambda1 = easeInOut(lambda);
+    angBary.flatness = 1 - lambda1;
+    whiteMesh.vertices = lerp2(lambda1)(flat, asinBased);
+  }]],
+  [[0.5, lambda => {
+    angBary.alpha = 1 - lambda;
+  }]],
   // TODO show sineBased2?
   // TODO show wireframes
   // TODO show polyhedra
   // TODO Mention icosphere?  A similar ad-hoc generalization of slerp from
   // two to three base points should be possible.
   // (But probably not worth the effort.)
+
   // ***** fade out *****
-  [[1, lambda => {
-    sinesExpl.alpha = whiteMesh.alpha = magentaMesh.alpha = yellowMesh.alpha = 1 - lambda;
-  }]]
+  // [[1, lambda => {
+  //   sinesExpl.alpha = whiteMesh.alpha = magentaMesh.alpha = yellowMesh.alpha = 1 - lambda;
+  // }]]
 ]
 
 
