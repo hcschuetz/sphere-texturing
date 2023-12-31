@@ -44,8 +44,6 @@ function createTriangulation(
     verticesBox: M.IComputedValue<T.Triangulation>,
     parent?: B.Mesh,
     vertexMaterial?: B.Material,
-    edgeColor?: B.Color4,
-    faceMaterial?: B.Material,
   },
   scene: B.Scene,  
 ) {
@@ -54,8 +52,6 @@ function createTriangulation(
     verticesBox,
     parent,
     vertexMaterial,
-    edgeColor,
-    faceMaterial,
   } = props;
 
   function linkToParent(mesh: B.Mesh): void {
