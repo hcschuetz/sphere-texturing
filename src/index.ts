@@ -395,11 +395,11 @@ class BarycentricCoordinates {
 }
 
 class AngularBarycentricCoordinates {
-  constructor(
-    public pos: V3,
-    public alpha = 0,
-    public flatness = 0,
-  ) {
+  public pos = V3.ZeroReadOnly;
+  public alpha = 0;
+  public flatness = 0;
+
+  constructor() {
     M.makeObservable(this, {
       pos: M.observable,
       alpha: M.observable,
@@ -662,7 +662,7 @@ const baryPoints =
 const bary = new BarycentricCoordinates(baryPoints[0], 0);
 const sinesExpl = new SinesExplanation();
 const angBaryPoints = baryPoints.map(p => p.normalizeToNew());
-const angBary = new AngularBarycentricCoordinates(angBaryPoints[0]);
+const angBary = new AngularBarycentricCoordinates();
 
 
 /** Lerp between two V3[][] (of equal shape) */
@@ -881,7 +881,8 @@ const motions: Motion[][] = [
   [.5, lambda => {
     sinesExpl.alpha = whiteMesh.alpha = 1 - lambda;
     cyanMesh.alpha = yellowMesh.alpha = magentaMesh.alpha = lambda;
-  }]],
+  }],
+  [0, () => sinesExpl.step = 0]],
   [[1, lambda => bary.alpha = lambda]],
   ...baryPoints.slice(1).map((p, i) =>
     [[1, lambda => {
@@ -893,7 +894,8 @@ const motions: Motion[][] = [
     bary.alpha = 1 - lambda;
   }]],
   // ***** angular barycentric coordinates *****
-  [[1, lambda => angBary.alpha = lambda]],
+  [[0, () => angBary.pos = angBaryPoints[0]],
+  [1, lambda => angBary.alpha = lambda]],
   ...angBaryPoints.slice(1).map((p, i) =>
     [[1, lambda => {
       angBary.pos = slerp(angBaryPoints[i], p, easeInOut(lambda));
@@ -921,9 +923,9 @@ const motions: Motion[][] = [
   // (But probably not worth the effort.)
 
   // ***** fade out *****
-  // [[1, lambda => {
-  //   sinesExpl.alpha = whiteMesh.alpha = magentaMesh.alpha = yellowMesh.alpha = 1 - lambda;
-  // }]]
+  [[.5, lambda => {
+    whiteMesh.alpha = 1 - lambda;
+  }]]
 ]
 
 
