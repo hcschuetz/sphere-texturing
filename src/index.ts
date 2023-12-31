@@ -46,7 +46,7 @@ function createTriangulation(
     vertexMaterial?: B.Material,
   },
   scene: B.Scene,  
-) {
+): void {
   const {
     n,
     verticesBox,
