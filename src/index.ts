@@ -59,6 +59,9 @@ light2.intensity = 0.8;
 const light3 = new B.DirectionalLight("light3", v3(3, 10, 10), scene);
 light3.intensity = 0.5;
 
+const light4 = new B.DirectionalLight("light4", v3(-10, 3, -3), scene);
+light4.intensity = 0.5;
+
 ([[1,0,0], [0,1,0], [0,0,1]] as [number, number, number][])
 .forEach((dims, i) => {
   const color = new B.Color3(...dims);
