@@ -578,6 +578,13 @@ const flatOnXYEdge = flat.map((row, i) => row.map((vertex, j) =>
   j === 0 ? vertex : V3.ZeroReadOnly
 ));
 
+const demoExpl = new Explanation(`
+  See
+  <a href="https://github.com/hcschuetz/octasphere/#notes-on-the-demo">here</a>
+  for some explanations.
+`);
+demoExpl.alpha = 1;
+
 const flatExpl = new Explanation(`
 <div style="opacity: 0.6;">
   For each
@@ -712,6 +719,7 @@ const motions: Motion[][] = [
   }],
   [0.5, lambda => {
     magentaMesh.alpha = lambda;
+    demoExpl.alpha = 1 - lambda;
     flatExpl.alpha = lambda;
   }]],
   // ***** flat *****
@@ -895,6 +903,7 @@ const motions: Motion[][] = [
   [[0, () => yellowMesh.alpha = cyanMesh.alpha = 0],
   [.5, lambda => {
     whiteMesh.alpha = 1 - lambda;
+    demoExpl.alpha = lambda;
   }]]
 ]
 
