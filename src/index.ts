@@ -283,7 +283,7 @@ class BarycentricCoordinates {
     });
     M.autorun(() => {
       const {coords} = this;
-      const point = coords.scale(1 / (coords.x + coords.y + coords.z));
+      const pos = coords.scale(1 / (coords.x + coords.y + coords.z));
       div.innerHTML = `
         <span style="text-decoration: underline">Barycentric Coordinates</span>
         <br>
@@ -308,9 +308,9 @@ class BarycentricCoordinates {
           background-color: #ccc;
           color: #000;
         ">
-          <b style="color: red"  >${point.x.toFixed(2)}</b> :
-          <b style="color: green">${point.y.toFixed(2)}</b> :
-          <b style="color: blue" >${point.z.toFixed(2)}</b>
+          <b style="color: red"  >${pos.x.toFixed(2)}</b> :
+          <b style="color: green">${pos.y.toFixed(2)}</b> :
+          <b style="color: blue" >${pos.z.toFixed(2)}</b>
         </span>
         `;
     });
