@@ -7,6 +7,8 @@ octasphere-related considerations below.
 Hints:
 - Click the step button to proceed and use the slider to set your preferred
   animation speed.
+- Drag the sphere to turn it around so that you can see things from different
+  angles.
 - Add a query parameter "`start`" to the URL if you want to start at
   a particular step.
 - Add a query parameter "`n`" to the URL to set the subdivision
