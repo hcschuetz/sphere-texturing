@@ -315,6 +315,18 @@ class BarycentricCoordinates {
         `;
     });
 
+    const pointMaterial = createStandardMaterial("baryMat", {
+    }, scene);
+    M.autorun(() => pointMaterial.alpha = this.alpha);
+    const point = B.MeshBuilder.CreateIcoSphere("bary_point", {
+      radius: 0.025,
+    }, scene);
+    point.material = pointMaterial;
+    M.autorun(() => {
+      const {coords} = this;
+      point.position = coords.scale(1 / (coords.x + coords.y + coords.z))
+    });
+
     [red, green, blue].forEach((color, idx) => {
       const material = createStandardMaterial("baryMat", {
         diffuseColor: color,
