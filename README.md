@@ -19,8 +19,11 @@ So https://hcschuetz.github.io/octasphere/dist/?start=60&n=10 displays
 step 60 with subdivision granularity 10.
 
 
-Sub-Triangulations of the Octasphere
-====================================
+Triangulations of the Octasphere
+================================
+
+Sphere Triangulation
+--------------------
 
 In computer graphics triangle meshes for spheres
 are frequently constructed as longitude/latitude grids
@@ -202,11 +205,11 @@ Properties:
   (the two meridians and the equator) are divided into
   `n` segments of equal size.
 - The symmetry between the `x` axis and the `z` axis is kept, but
-  the other symmetries, especially the ±120° rotations of the triangle,
+  the other symmetries, especially the `±120°` rotations of the triangle,
   are broken.  That is, vertices inside the spherical triangle
   are generally not mapped to vertices by such rotations.
   (But vertices on the arcs delimiting our spherical
-  triangle *are* mapped to vertices by the ±120° rotations.)
+  triangle *are* mapped to vertices by the `±120°` rotations.)
 - Intuitively, the vertices inside the spherical triangle are "too close to
   the pole `ey`".
   For example, the face center `(1/3, 1/3, 1/3)` is not mapped to the center
@@ -239,11 +242,11 @@ Properties:
   (the two meridians and the equator) are divided into
   `n` segments of equal size.
 - The symmetry between the `x` axis and the `z` axis is kept, but
-  the other symmetries, especially the ±120° rotations of the triangle,
+  the other symmetries, especially the `±120`° rotations of the triangle,
   are broken.  That is, vertices inside the spherical triangle
   are generally not mapped to vertices by such rotations.
   (But vertices on the arcs delimiting our spherical
-  triangle *are* mapped to vertices by the ±120° rotations.)
+  triangle *are* mapped to vertices by the `±120°` rotations.)
 - Intuitively, the vertices inside the spherical triangle are "too close to
   the equator".
   For example, the face center `(1/3, 1/3, 1/3)` is not mapped to the center
@@ -276,22 +279,22 @@ The other coordinates are given as `z = 0` and `x = 1 - y`.
 
 We can describe a uniform motion along the meridian in a parametric form using
 the parameter `y` running from `0` to `1` by the expression
-```
+```js
   (cos(y * 90°), sin(y * 90°), 0)
 ```
 
 The first coordinate (the `y` value of the point on the meridian) can be
 rewritten like this:
-```
+```js
   cos(y * 90°) = sin(90° - y * 90°) = sin((1 - y) * 90°) = sin(x * 90°)
 ```
 Also the third parameter (the `z`value of the point on the meridian) can be
 rewritten to a similar form:
-```
+```js
   0 = sin(0°) = sin(0 * 90°) = sin(z * 90°)
 ```
 Taking these rewritings together, our point on the meridian has the form
-```
+```js
   (sin(x * 90°), sin(y * 90°), sin(z * 90°))
 ```
 The same expression can be derived for the other meridian and the equator.
@@ -307,7 +310,7 @@ For example the face center `(1/3, 1/3, 1/3)` is mapped to
 
 As a "hack" we can simply apply a normalization as a second step after
 the sine-based expression from above:
-```
+```js
   normalize((sin(x * 90°), sin(y * 90°), sin(z * 90°)))
 ```
 This normalization does not affect the vertices on the edges because they
@@ -352,8 +355,8 @@ to our spherical triangle.
 
 A point `(X, Y, Z)` in our spherical triangle can be identified by the three
 angles between the point and each of the three coordinate planes:
-```
-(ξ, υ, ζ) := (asin(X), asin(Y), asin(Z))
+```js
+(ξ, υ, ζ) = (asin(X), asin(Y), asin(Z))
 ```
 As we have only two degrees of freedom on the sphere, giving three angles
 is actually redundant.
@@ -362,8 +365,8 @@ Notice, however, that in contrast to the flat case,
 the sum of the three angles is not constant.
 
 We normalize the triplet of angles so that their sum becomes `1`:
-```
-(x, y, z) := (ξ / s, υ / s, ζ / s)   where   s := ξ + υ + ζ
+```js
+(x, y, z) = (ξ / s, υ / s, ζ / s)   where   s = ξ + υ + ζ
 ```
 By construction we now have `x + y + z = 1`.
 Furthermore for our initial point we had `X, Y, Z > 0`,
@@ -393,7 +396,7 @@ to `(X, Y, Z)` and I am afraid that this is not possible in a straight-forward
 way.
 But it is possible to give an iterative approximation algorithm, which
 happens to converge very quickly:
-```
+```js
 // barycentric normalization
 function normalize1((x, y, z)) {
   const s = x + y + z;
@@ -416,7 +419,7 @@ function faceToSphere((x, y, z)) {
   while (true) {
     const f = sphereToFace(guess);
     const offset = f - (x, y, z);
-    if ("offset is small enough") {
+    if (/* offset is small enough */) {
       return guess;
     }
     guess = normalize2(normalize1(guess) - offset);
@@ -446,12 +449,12 @@ Tetrasphere and Icosphere
 -------------------------
 
 It is mostly straight-forward to adapt the constructions given above to
-a regular tetrahedron and a regular icosahedron, whose faces are also
+a regular tetrahedron or a regular icosahedron, whose faces are also
 equilateral triangles.
 
-Formulas are a bit simpler for the octahedron case because
+Computations are a bit simpler for the octahedron case because
 - the octahedron vertices can be aligned with the coordinate axes and
-- the angle between neighboring vertices is 90°.
+- the angle between neighboring vertices is `90°`.
 
 This made the derivation of the sine-based mapping particularly easy.
 Transferring this to icospheres and tetraspheres would mean to extend the
