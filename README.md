@@ -82,7 +82,7 @@ We will discuss various such mappings and their properties.
 
 In the demo and in the following considerations
 we deal with only one of the faces
-and the corresponding shperical triangle covering an eighth of the sphere.
+and the corresponding spherical triangle covering an eighth of the sphere.
 The other faces are to be treated in an analogous way.
 
 For simplicity we also assume
