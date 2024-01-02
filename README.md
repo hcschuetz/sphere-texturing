@@ -481,7 +481,11 @@ Equispaced geodesics are also known and I have provided two links above.
 Have the other mappings already been suggested and investigated?
 Some of them feel so natural that I could imagine that someone else has already
 thought of them.
+Or are there other approaches for triangulating an octasphere?
+If you know of previous work, please let me know
+[here](https://github.com/hcschuetz/octasphere/discussions/2).
 
 Finally, I am not too happy with the names I am using for the sine-based mapping
 and the mapping based on angular barycentric coordinates.
-Any suggestions for better names?
+Any ideas for better names?  Please give your suggestions
+[here](https://github.com/hcschuetz/octasphere/discussions/1).
