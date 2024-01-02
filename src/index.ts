@@ -580,7 +580,7 @@ const flatOnXYEdge = flat.map((row, i) => row.map((vertex, j) =>
 
 const demoExpl = new Explanation(`
   See
-  <a href="https://github.com/hcschuetz/octasphere/#notes-on-the-demo">here</a>
+  <a href="https://github.com/hcschuetz/octasphere/#notes-on-the-demo">https://github.com/hcschuetz/octasphere/#notes-on-the-demo</a>
   for some explanations.
 `);
 demoExpl.alpha = 1;
@@ -620,10 +620,23 @@ const parallelsExpl = new Explanation(`
 const onEvenGeodesicsExpl = new Explanation(`
   slerp( slerp(${ex}, ${ey}, y ), slerp( ${ez}, ${ey}, y ), z / (1-y) )
 `);
+const overviewExpl = new Explanation(`
+  <div style="color: red;"    >plain normalization<br>(geodesic polyhedron)</div>
+  <div style="color: cyan;"   >equispaced geodesics</div>
+  <div style="color: magenta;">parallels</div>
+  <div style="color: yellow;" >sine-based</div>
+  <div style="color: white;"  >based on angular </div>
+`);
+const linksExpl = new Explanation(`
+  This application: <a href="https://hcschuetz.github.io/octasphere/dist/">https://hcschuetz.github.io/octasphere/dist/</a>
+  <br>
+  Code and documentation: <a href="https://github.com/hcschuetz/octasphere/">https://github.com/hcschuetz/octasphere/</a>
+`);
 
 const cyanMesh    = new TriangulationWithAuxLines(flatLines, flat, cyan   , 0);
 const yellowMesh  = new TriangulationWithAuxLines(flatLines, flat, yellow , 0);
 const magentaMesh = new TriangulationWithAuxLines(flatLines, flat, magenta, 0);
+const redMesh     = new TriangulationWithAuxLines(geodesics, geodesic, red, 0);
 const whiteMesh   = new TriangulationWithAuxLines(collapsedLines, evenOnEdges, B.Color3.White(), 0);
 const rays = new Rays(collapsed.flat(), 0);
 const baryPoints =
@@ -891,20 +904,52 @@ const motions: Motion[][] = [
   // ***** asinBased (angular barycentric coordinates) *****
   mirror(whiteMesh),
   ...rotate(whiteMesh, yellowMesh, cyanMesh, false),
+  // ***** overview *****
+  [[0, () => {
+    cyanMesh.vertices = onEvenGeodesics;
+    cyanMesh.lines = evenGeodesics;
+    rotateTo(cyanMesh, 0);
+    magentaMesh.vertices = onParallels;
+    magentaMesh.lines = parallels;
+    rotateTo(magentaMesh, 0);
+    yellowMesh.vertices = sineBased;
+    yellowMesh.lines = collapsedLines;
+    rotateTo(yellowMesh, 0);
+
+    cyanMesh.alpha =
+    magentaMesh.alpha =
+    yellowMesh.alpha =
+    redMesh.alpha =
+    overviewExpl.alpha = 0;
+  }],
+  [1, lambda => {
+    cyanMesh.alpha =
+    magentaMesh.alpha =
+    yellowMesh.alpha =
+    redMesh.alpha =
+    overviewExpl.alpha = lambda;
+  }]],
+
+
 
   // TODO show sineBased2?
   // TODO show wireframes
-  // TODO show polyhedra
-  // TODO Mention icosphere and tetrasphere?  A similar ad-hoc generalization
-  // of slerp from two to three base points should be possible.
-  // (But probably not worth the effort.)
+  // TODO show polyhedra with flat faces or Phong shading
 
   // ***** fade out *****
-  [[0, () => yellowMesh.alpha = cyanMesh.alpha = 0],
-  [.5, lambda => {
-    whiteMesh.alpha = 1 - lambda;
+  [[.5, lambda => {
+    cyanMesh.alpha =
+    magentaMesh.alpha =
+    yellowMesh.alpha =
+    redMesh.alpha =
+    whiteMesh.alpha =
+    overviewExpl.alpha = 1 - lambda;
+    linksExpl.alpha = lambda;
+  }]],
+  [[1, lambda => {
+    linksExpl.alpha = 1 - lambda;
     demoExpl.alpha = lambda;
-  }]]
+  }]],
 ]
 
 
