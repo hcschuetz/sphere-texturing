@@ -273,38 +273,37 @@ Let us consider one edge of our octahedron face and the corresponding edge
 of the spherical triangle, say the ones connecting `ex` and `ey`.
 We want to map a uniform motion along the octahedron edge to a uniform
 motion along the meridian.
-The position along the octahedron edge is uniquely identified by the `y`
-coordinate, which runs from `0` to `1`.
-The other coordinates are given as `z = 0` and `x = 1 - y`.
+Let the motion be from `ex` to `ey` driven by the parameter `t` ranging from
+`0` to `1`.
 
-We can describe a uniform motion along the meridian in a parametric form using
-the parameter `y` running from `0` to `1` by the expression
+The motion along the edge is given by the expression
 ```js
-  (cos(y * 90°), sin(y * 90°), 0)
+  (x, y, z) = (1 - t, t, 0)
 ```
 
-The first coordinate (the `y` value of the point on the meridian) can be
-rewritten like this:
+The uniform motion along the meridian is given by the expression
 ```js
-  cos(y * 90°) = sin(90° - y * 90°) = sin((1 - y) * 90°) = sin(x * 90°)
+  (X, Y, Z) = (cos(t * 90°), sin(t * 90°), 0)
 ```
-Also the third parameter (the `z`value of the point on the meridian) can be
-rewritten to a similar form:
+
+The coordinates `(X, Y, Z)` of the point on the meridian can be rewritten
+using the coordinates `(x, y, z)` of the point on the octahedron edge:
 ```js
-  0 = sin(0°) = sin(0 * 90°) = sin(z * 90°)
+  X = cos(t * 90°) = sin(90° - t * 90°) = sin((1 - t) * 90°) = sin(x * 90°);
+  Y = sin(t * 90°) = sin(y * 90°);
+  Z = 0 = sin(0°) = sin(0 * 90°) = sin(z * 90°);
 ```
-Taking these rewritings together, our point on the meridian has the form
+Taking this together, the meridian point has a very symmetric representation:
 ```js
-  (sin(x * 90°), sin(y * 90°), sin(z * 90°))
+  (X, Y, Z) = (sin(x * 90°), sin(y * 90°), sin(z * 90°))
 ```
 The same expression can be derived for the other meridian and the equator.
 
-There is no need to use the same expression for the inner vertices of the face,
+Now there is no need to use the same expression
+for the inner vertices of the face,
 but it feels natural to do so.
-
 Unfortunately this expression does not map inner vertices to the sphere
 but to points inside the sphere.
-
 For example the face center `(1/3, 1/3, 1/3)` is mapped to
 `(sin(1/3 * 90°), sin(1/3 * 90°), sin(1/3 * 90°)) = (sin(30°), sin(30°), sin(30°)) = (1/2, 1/2, 1/2)`, which has a Euclidean norm of `sqrt(3)/2 < 1`.
 
