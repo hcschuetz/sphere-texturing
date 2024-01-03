@@ -134,6 +134,13 @@ or like this:
     const position = lerp(lerp(ex, ez, z/(1-y)), ey, y);
 ```
 
+Why would one do this?
+Probably one wouldn't since the simple expression `(x, y, z)`
+is more readable and more efficient.
+
+I have just introduced these `lerp`-based expressions for comparison
+with similar expressions below.
+
 
 Geodesic Polyhedron
 -------------------
