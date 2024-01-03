@@ -416,7 +416,7 @@ function normalize2((x, y, z)) {
 }
 
 function sphereToFace((X, Y, Z)) {
-  return normalize1(asin(X), asin(Y), asin(Z));
+  return normalize1((asin(X), asin(Y), asin(Z)));
 }
 
 function faceToSphere((x, y, z)) {
