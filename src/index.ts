@@ -863,6 +863,7 @@ const motions: Motion[][] = [
     rotateTo(magentaMesh, 0);
     rotateTo(yellowMesh, 1);
     rotateTo(cyanMesh, -1);
+    bary.coords = baryPoints[0];
   }],
   [.5, lambda => {
     sinesExpl.alpha = whiteMesh.alpha = 1 - lambda;
