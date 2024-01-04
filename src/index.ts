@@ -131,6 +131,7 @@ sphere.material = createStandardMaterial("sphMat", {
   // This seems to have no effect:
   sideOrientation: B.VertexData.DOUBLESIDE,
 }, scene);
+M.autorun(() => sphere.material!.alpha = 0.1 * octasphereAlpha.get());
 
 const arc1 = B.MeshBuilder.CreateTube("arc1", {
   path: subdivide(0, 1, 40).map(lambda =>
