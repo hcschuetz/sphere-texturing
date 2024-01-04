@@ -62,13 +62,10 @@ export class RoundedBox {
           sines.forEach((sineX, i) => {
             const x = xSgn * sineX;
             cornerPositionIdxs.push([]);
-            sines.forEach((sineY, j) => {
-              const k = steps - i - j;
-              if (k < 0) {
-                return;
-              }
-              const sineZ = sines[k];
+            sines.slice(0, steps - i + 1).forEach((sineY, j) => {
               const y = ySgn * sineY;
+              const k = steps - i - j;
+              const sineZ = sines[k];
               const z = zSgn * sineZ;
               const normal = new B.Vector3(x, y, z).normalize();
               const pos = normal.scale(radius).addInPlaceFromFloats(x0, y0, z0);
