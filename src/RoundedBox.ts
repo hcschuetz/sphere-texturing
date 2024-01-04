@@ -38,7 +38,7 @@ export class RoundedBox {
         indices.push(a, b, c);
       }
     }
-    const positionIdxs: number[][][][][] = [];
+    const positionIdxs: number[/* xIdx */][/* yIdx */][/* zIdx */][/* i */][/* j */] = [];
     xs.forEach((x0, xIdx) => {
       const xSgn = [1, -1][xIdx];
       positionIdxs.push([]);
