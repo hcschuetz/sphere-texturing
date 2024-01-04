@@ -70,7 +70,7 @@ const roundedBox = new RoundedBox("box", {
   xs: [.4, -1],
   ys: [.4, 0],
   zs: [.7, -.2],
-  radius: .2,
+  radius: Number.parseFloat(params.get("boxRadius") ?? ".2"),
   steps: n,
 }, scene);
 const boxMaterial = new B.MultiMaterial("multi", scene);
