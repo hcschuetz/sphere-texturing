@@ -31,8 +31,10 @@ export class RoundedBox {
 
     const positions: B.Vector3[] = [];
     const normals: B.Vector3[] = [];
-    const indices: number[] = [];
-    function addTriangle(a: number, b: number, c: number, flip: boolean) {
+    const faces: number[] = [];
+    const edges: number[] = [];
+    const corners: number[] = [];
+    function addTriangle(indices: number[], a: number, b: number, c: number, flip: boolean) {
       if (flip) {
         indices.push(a, c, b);
       } else {
@@ -68,6 +70,7 @@ export class RoundedBox {
               if (i > 0) {
                 if (j > 0) {
                   addTriangle(
+                    corners,
                     pIdx,
                     cornerPositionIdxs[i][j - 1],
                     cornerPositionIdxs[i - 1][j],
@@ -75,6 +78,7 @@ export class RoundedBox {
                   );
                 }
                 addTriangle(
+                  corners,
                   pIdx,
                   cornerPositionIdxs[i - 1][j],
                   cornerPositionIdxs[i - 1][j + 1],
@@ -83,12 +87,14 @@ export class RoundedBox {
               }
               if (xIdx === 1 && i === 0 && j > 0) {
                 addTriangle(
+                  edges,
                   pIdx,
                   cornerPositionIdxs[0][j - 1],
                   positionIdxs[0][yIdx][zIdx][0][j - 1],
                   flip
                 );
                 addTriangle(
+                  edges,
                   pIdx,
                   positionIdxs[0][yIdx][zIdx][0][j - 1],
                   positionIdxs[0][yIdx][zIdx][0][j],
@@ -97,12 +103,14 @@ export class RoundedBox {
               }
               if (yIdx === 1 && j === 0 && i > 0) {
                 addTriangle(
+                  edges,
                   pIdx,
                   positionIdxs[xIdx][0][zIdx][i - 1][j],
                   cornerPositionIdxs[i - 1][j],
                   flip
                 );
                 addTriangle(
+                  edges,
                   pIdx,
                   positionIdxs[xIdx][0][zIdx][i][0],
                   positionIdxs[xIdx][0][zIdx][i - 1][0],
@@ -111,12 +119,14 @@ export class RoundedBox {
               }
               if (zIdx === 1 && k === 0 && i > 0) {
                 addTriangle(
+                  edges,
                   pIdx,
                   cornerPositionIdxs[i - 1][j + 1],
                   positionIdxs[xIdx][yIdx][0][i - 1][j + 1],
                   flip
                 );
                 addTriangle(
+                  edges,
                   pIdx,
                   positionIdxs[xIdx][yIdx][0][i - 1][j + 1],
                   positionIdxs[xIdx][yIdx][0][i][j],
@@ -125,12 +135,14 @@ export class RoundedBox {
               }
               if (xIdx === 1 && yIdx === 1 && i === 0 && j === 0) {
                 addTriangle(
+                  faces,
                   pIdx,
                   positionIdxs[1][0][zIdx][0][0],
                   positionIdxs[0][1][zIdx][0][0],
                   flip
                 );
                 addTriangle(
+                  faces,
                   positionIdxs[0][0][zIdx][0][0],
                   positionIdxs[0][1][zIdx][0][0],
                   positionIdxs[1][0][zIdx][0][0],
@@ -139,12 +151,14 @@ export class RoundedBox {
               }
               if (xIdx === 1 && zIdx === 1 && i === 0 && k === 0) {
                 addTriangle(
+                  faces,
                   pIdx,
                   positionIdxs[0][yIdx][1][0][steps],
                   positionIdxs[1][yIdx][0][0][steps],
                   flip
                 );
                 addTriangle(
+                  faces,
                   positionIdxs[0][yIdx][0][0][steps],
                   positionIdxs[1][yIdx][0][0][steps],
                   positionIdxs[0][yIdx][1][0][steps],
@@ -153,12 +167,14 @@ export class RoundedBox {
               }
               if (yIdx === 1 && zIdx === 1 && j === 0 && k === 0) {
                 addTriangle(
+                  faces,
                   pIdx,
                   positionIdxs[xIdx][1][0][steps][0],
                   positionIdxs[xIdx][0][1][steps][0],
                   flip
                 );
                 addTriangle(
+                  faces,
                   positionIdxs[xIdx][0][0][steps][0],
                   positionIdxs[xIdx][0][1][steps][0],
                   positionIdxs[xIdx][1][0][steps][0],
@@ -173,7 +189,7 @@ export class RoundedBox {
     const vertexData = new B.VertexData();
     vertexData.positions = positions.flatMap(p => p.asArray());
     vertexData.normals = normals.flatMap(p => p.asArray());
-    vertexData.indices = indices;
+    vertexData.indices = [...faces, ...edges, ...corners];
     vertexData.applyToMesh(mesh);
   }
 }
