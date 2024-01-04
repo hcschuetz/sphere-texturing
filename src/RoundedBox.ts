@@ -4,8 +4,8 @@ import { subdivide, TAU } from "./utils";
 
 export class RoundedBox {
   position: B.Vector3;
-  // TODO use separate materials for faces/edges/corners
-  material: B.Nullable<B.Material> = null;
+  /** Should have 3 sub-materials for faces/edges/corners */
+  material: B.Nullable<B.MultiMaterial> = null;
 
   constructor(
     name: string,
@@ -27,7 +27,9 @@ export class RoundedBox {
     const mesh = new B.Mesh(name, scene);
     M.autorun(() => mesh.material = this.material);
 
-    const sines = subdivide(0, TAU / 4, steps).map(alpha => Math.sin(alpha));
+    const fractions = subdivide(0, 1, steps);
+    const sines = fractions.map(alpha => Math.sin(TAU/4 * alpha));
+    // Use fractions for a geodesic polyhedron and sines for sine-based placement.
 
     const positions: B.Vector3[] = [];
     const normals: B.Vector3[] = [];
@@ -40,6 +42,10 @@ export class RoundedBox {
       } else {
         indices.push(a, b, c);
       }
+    }
+    function addQuadrangle(indices: number[], a: number, b: number, c: number, d: number, flip: boolean)  {
+      addTriangle(indices, a, b, c, flip);
+      addTriangle(indices, a, c, d, flip);
     }
     const positionIdxs: number[/* xIdx */][/* yIdx */][/* zIdx */][/* i */][/* j */] = [];
     xs.forEach((x0, xIdx) => {
@@ -77,7 +83,7 @@ export class RoundedBox {
                     pIdx,
                     cornerPositionIdxs[i][j - 1],
                     cornerPositionIdxs[i - 1][j],
-                    flip
+                    flip,
                   );
                 }
                 addTriangle(
@@ -85,103 +91,67 @@ export class RoundedBox {
                   pIdx,
                   cornerPositionIdxs[i - 1][j],
                   cornerPositionIdxs[i - 1][j + 1],
-                  flip
+                  flip,
                 );
-              }
+            }
               if (xIdx === 1 && i === 0 && j > 0) {
-                addTriangle(
+                addQuadrangle(
                   edges,
                   pIdx,
                   cornerPositionIdxs[0][j - 1],
                   positionIdxs[0][yIdx][zIdx][0][j - 1],
-                  flip
-                );
-                addTriangle(
-                  edges,
-                  pIdx,
-                  positionIdxs[0][yIdx][zIdx][0][j - 1],
                   positionIdxs[0][yIdx][zIdx][0][j],
-                  flip
+                  flip,
                 );
               }
               if (yIdx === 1 && j === 0 && i > 0) {
-                addTriangle(
-                  edges,
-                  pIdx,
-                  positionIdxs[xIdx][0][zIdx][i - 1][j],
-                  cornerPositionIdxs[i - 1][j],
-                  flip
-                );
-                addTriangle(
+                addQuadrangle(
                   edges,
                   pIdx,
                   positionIdxs[xIdx][0][zIdx][i][0],
                   positionIdxs[xIdx][0][zIdx][i - 1][0],
-                  flip
+                  cornerPositionIdxs[i - 1][0],
+                  flip,
                 );
               }
               if (zIdx === 1 && k === 0 && i > 0) {
-                addTriangle(
+                addQuadrangle(
                   edges,
                   pIdx,
                   cornerPositionIdxs[i - 1][j + 1],
                   positionIdxs[xIdx][yIdx][0][i - 1][j + 1],
-                  flip
-                );
-                addTriangle(
-                  edges,
-                  pIdx,
-                  positionIdxs[xIdx][yIdx][0][i - 1][j + 1],
                   positionIdxs[xIdx][yIdx][0][i][j],
-                  flip
+                  flip,
                 );
               }
               if (xIdx === 1 && yIdx === 1 && i === 0 && j === 0) {
-                addTriangle(
+                addQuadrangle(
                   faces,
                   pIdx,
                   positionIdxs[1][0][zIdx][0][0],
-                  positionIdxs[0][1][zIdx][0][0],
-                  flip
-                );
-                addTriangle(
-                  faces,
                   positionIdxs[0][0][zIdx][0][0],
                   positionIdxs[0][1][zIdx][0][0],
-                  positionIdxs[1][0][zIdx][0][0],
-                  flip
+                  flip,
                 );
               }
               if (xIdx === 1 && zIdx === 1 && i === 0 && k === 0) {
-                addTriangle(
+                addQuadrangle(
                   faces,
                   pIdx,
                   positionIdxs[0][yIdx][1][0][steps],
-                  positionIdxs[1][yIdx][0][0][steps],
-                  flip
-                );
-                addTriangle(
-                  faces,
                   positionIdxs[0][yIdx][0][0][steps],
                   positionIdxs[1][yIdx][0][0][steps],
-                  positionIdxs[0][yIdx][1][0][steps],
-                  flip
+                  flip,
                 );
               }
               if (yIdx === 1 && zIdx === 1 && j === 0 && k === 0) {
-                addTriangle(
+                addQuadrangle(
                   faces,
                   pIdx,
                   positionIdxs[xIdx][1][0][steps][0],
-                  positionIdxs[xIdx][0][1][steps][0],
-                  flip
-                );
-                addTriangle(
-                  faces,
                   positionIdxs[xIdx][0][0][steps][0],
                   positionIdxs[xIdx][0][1][steps][0],
-                  positionIdxs[xIdx][1][0][steps][0],
-                  flip
+                  flip,
                 );
               }
             });
@@ -194,5 +164,10 @@ export class RoundedBox {
     vertexData.normals = normals.flatMap(p => p.asArray());
     vertexData.indices = [...faces, ...edges, ...corners];
     vertexData.applyToMesh(mesh);
+
+    mesh.subMeshes = [];
+    new B.SubMesh(0, 0, positions.length, 0, faces.length, mesh);
+    new B.SubMesh(1, 0, positions.length, faces.length, edges.length, mesh);
+    new B.SubMesh(2, 0, positions.length, faces.length + edges.length, corners.length, mesh);
   }
 }

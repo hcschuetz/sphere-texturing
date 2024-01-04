@@ -70,11 +70,22 @@ const roundedBox = new RoundedBox("box", {
   zs: [.7, -.2],
   radius: .2,
 }, scene);
-roundedBox.material = createStandardMaterial("cornerMat", {
-  diffuseColor: B.Color3.Gray(),
-  alpha: 0,
-});
-
+const boxMaterial = new B.MultiMaterial("multi", scene);
+boxMaterial.subMaterials.push(
+  createStandardMaterial("faceMat", {
+    diffuseColor: B.Color3.Gray(),
+    alpha: 0,
+  }),
+  createStandardMaterial("edgeMat", {
+    diffuseColor: B.Color3.Blue(),
+    alpha: 0,
+  }),
+  createStandardMaterial("cornerMat", {
+    diffuseColor: B.Color3.Red(),
+    alpha: 0,
+  }),
+);
+roundedBox.material = boxMaterial;
 
 const octasphereAlpha = M.observable.box(0);
 
@@ -745,14 +756,15 @@ const rotate = (
 
 type Motion = [number, (current: number) => void];
 const motions: Motion[][] = [
-  [[.5, lambda => roundedBox.material!.alpha = lambda]],
+  [[.5, lambda => boxMaterial.subMaterials.forEach(m => m!.alpha = lambda)]],
+  [[0, () => boxMaterial.subMaterials.forEach(m => m!.wireframe = true)]],
   [[0, () => {
     magentaMesh.rotation = yellowMesh.rotation = cyanMesh.rotation = V3.ZeroReadOnly;
     magentaMesh.lines = yellowMesh.lines = cyanMesh.lines = flatLines;
     magentaMesh.vertices = yellowMesh.vertices = cyanMesh.vertices = flat;
   }],
   [0.5, lambda => {
-    roundedBox.material!.alpha = 1 - lambda;
+    boxMaterial.subMaterials.forEach(m => m!.alpha = 1 - lambda);
     octasphereAlpha.set(lambda);
   }]],
   [[0.5, lambda => {
