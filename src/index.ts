@@ -62,6 +62,10 @@ light3.intensity = 0.5;
 const light4 = new B.DirectionalLight("light4", v3(-10, 3, -3), scene);
 light4.intensity = 0.5;
 
+
+const octasphereAlpha = M.observable.box(0);
+
+
 ([[1,0,0], [0,1,0], [0,0,1]] as [number, number, number][])
 .forEach((dims, i) => {
   const color = new B.Color3(...dims);
@@ -73,6 +77,7 @@ light4.intensity = 0.5;
     diffuseColor: color,
     // emissiveColor: color,
   }, scene);
+  M.autorun(() => arrow.material!.alpha = octasphereAlpha.get());
 
   const labelPos = new B.TransformNode("labelPos" + i, scene);
   labelPos.position = v3(...dims).scaleInPlace(1.1);
@@ -81,15 +86,17 @@ light4.intensity = 0.5;
   label.fontSize = 24;
   advancedTexture.addControl(label);
   label.linkWithMesh(labelPos);
+  M.autorun(() => label.alpha = octasphereAlpha.get());
 });
 
 // Allow to hide some vertices temporarily inside the origin
-B.MeshBuilder.CreateIcoSphere("origin", {
+const origin = B.MeshBuilder.CreateIcoSphere("origin", {
   radius: 0.02,
-}, scene).material = createStandardMaterial("originMat", {
+}, scene);
+origin.material = createStandardMaterial("originMat", {
   diffuseColor: B.Color3.Black(),
 }, scene);
-
+M.autorun(() => origin.material!.alpha = octasphereAlpha.get());
 
 const octahedron = B.MeshBuilder.CreatePolyhedron("octahedron", {
   type: 1,
@@ -97,16 +104,17 @@ const octahedron = B.MeshBuilder.CreatePolyhedron("octahedron", {
 }, scene);
 octahedron.material = createStandardMaterial("octaMat", {
   diffuseColor: new B.Color3(.8, .8, .8),
-  alpha: 0.2,
   sideOrientation: B.VertexData.DOUBLESIDE,
 }, scene);
+M.autorun(() => octahedron.material!.alpha = 0.2 * octasphereAlpha.get());
+
 
 const sphere = B.MeshBuilder.CreateSphere("sphere", {
   diameter: 2,
 });
 sphere.material = createStandardMaterial("sphMat", {
   diffuseColor: new B.Color3(1,1,1),
-  alpha: 0.1,
+  alpha: 0,
   // This seems to have no effect:
   sideOrientation: B.VertexData.DOUBLESIDE,
 }, scene);
@@ -129,6 +137,7 @@ arc1.material = arc2.material = arc3.material =
     alpha: 0.4,
     sideOrientation: B.VertexData.DOUBLESIDE,
   }, scene);
+M.autorun(() => arc1.material!.alpha = octasphereAlpha.get());
 
 const n = Number.parseInt(params.get("n") ?? "6");
 
@@ -731,6 +740,9 @@ const motions: Motion[][] = [
     magentaMesh.vertices = yellowMesh.vertices = cyanMesh.vertices = flat;
   }],
   [0.5, lambda => {
+    octasphereAlpha.set(lambda);
+  }]],
+  [[0.5, lambda => {
     magentaMesh.alpha = lambda;
     demoExpl.alpha = 1 - lambda;
     flatExpl.alpha = lambda;
@@ -939,6 +951,7 @@ const motions: Motion[][] = [
 
   // ***** fade out *****
   [[.5, lambda => {
+    octasphereAlpha.set(1 - lambda);
     cyanMesh.alpha =
     magentaMesh.alpha =
     yellowMesh.alpha =
