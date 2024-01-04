@@ -613,7 +613,7 @@ const flatOnXYEdge = flat.map((row, i) => row.map((vertex, j) =>
 const demoExpl = new Explanation(`
   See
   <a href="https://github.com/hcschuetz/octasphere/#notes-on-the-demo">https://github.com/hcschuetz/octasphere/#notes-on-the-demo</a>
-  for some explanations.
+  for some hints.
 `);
 demoExpl.alpha = 1;
 
