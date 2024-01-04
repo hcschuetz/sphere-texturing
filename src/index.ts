@@ -3,6 +3,7 @@ import * as G from "@babylonjs/gui";
 import * as M from "mobx";
 import * as T from "./triangulation";
 import { MotionController, easeInOut, map2, radToDeg, slerp, subdivide, zip } from "./utils";
+import { RoundedBox } from "./RoundedBox";
 // import { log } from "./debug";
 
 const params = new URL(document.URL).searchParams;
@@ -61,6 +62,18 @@ light3.intensity = 0.5;
 
 const light4 = new B.DirectionalLight("light4", v3(-10, 3, -3), scene);
 light4.intensity = 0.5;
+
+
+const roundedBox = new RoundedBox("box", {
+  xs: [.4, -1],
+  ys: [.4, 0],
+  zs: [.7, -.2],
+  radius: .2,
+}, scene);
+roundedBox.material = createStandardMaterial("cornerMat", {
+  diffuseColor: B.Color3.Gray(),
+  alpha: 0,
+});
 
 
 const octasphereAlpha = M.observable.box(0);
@@ -731,15 +744,14 @@ const rotate = (
 
 type Motion = [number, (current: number) => void];
 const motions: Motion[][] = [
-  // TODO show a rounded box with wireframe and colored faces (planes),
-  // edges (quarter cylinders), and corners (eighths of spheres)
-  // (port the buzzer?)
+  [[.5, lambda => roundedBox.material!.alpha = lambda]],
   [[0, () => {
     magentaMesh.rotation = yellowMesh.rotation = cyanMesh.rotation = V3.ZeroReadOnly;
     magentaMesh.lines = yellowMesh.lines = cyanMesh.lines = flatLines;
     magentaMesh.vertices = yellowMesh.vertices = cyanMesh.vertices = flat;
   }],
   [0.5, lambda => {
+    roundedBox.material!.alpha = 1 - lambda;
     octasphereAlpha.set(lambda);
   }]],
   [[0.5, lambda => {
