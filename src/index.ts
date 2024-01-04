@@ -64,25 +64,25 @@ const light4 = new B.DirectionalLight("light4", v3(-10, 3, -3), scene);
 light4.intensity = 0.5;
 
 
+const n = Number.parseInt(params.get("n") ?? "6");
+
 const roundedBox = new RoundedBox("box", {
   xs: [.4, -1],
   ys: [.4, 0],
   zs: [.7, -.2],
   radius: .2,
+  steps: n,
 }, scene);
 const boxMaterial = new B.MultiMaterial("multi", scene);
 boxMaterial.subMaterials.push(
   createStandardMaterial("faceMat", {
     diffuseColor: B.Color3.Gray(),
-    alpha: 0,
   }),
   createStandardMaterial("edgeMat", {
     diffuseColor: B.Color3.Blue(),
-    alpha: 0,
   }),
   createStandardMaterial("cornerMat", {
     diffuseColor: B.Color3.Red(),
-    alpha: 0,
   }),
 );
 roundedBox.material = boxMaterial;
@@ -163,8 +163,6 @@ arc1.material = arc2.material = arc3.material =
     sideOrientation: B.VertexData.DOUBLESIDE,
   }, scene);
 M.autorun(() => arc1.material!.alpha = octasphereAlpha.get());
-
-const n = Number.parseInt(params.get("n") ?? "6");
 
 const red = B.Color3.Red();
 const green = B.Color3.Green();
@@ -756,7 +754,6 @@ const rotate = (
 
 type Motion = [number, (current: number) => void];
 const motions: Motion[][] = [
-  [[.5, lambda => boxMaterial.subMaterials.forEach(m => m!.alpha = lambda)]],
   [[0, () => boxMaterial.subMaterials.forEach(m => m!.wireframe = true)]],
   [[0, () => {
     magentaMesh.rotation = yellowMesh.rotation = cyanMesh.rotation = V3.ZeroReadOnly;
@@ -766,7 +763,8 @@ const motions: Motion[][] = [
   [0.5, lambda => {
     boxMaterial.subMaterials.forEach(m => m!.alpha = 1 - lambda);
     octasphereAlpha.set(lambda);
-  }]],
+  }],
+  [0, () => boxMaterial.subMaterials.forEach(m => m!.wireframe = false)]],
   [[0.5, lambda => {
     magentaMesh.alpha = lambda;
     demoExpl.alpha = 1 - lambda;
@@ -988,6 +986,7 @@ const motions: Motion[][] = [
   [[1, lambda => {
     linksExpl.alpha = 1 - lambda;
     demoExpl.alpha = lambda;
+    boxMaterial.subMaterials.forEach(m => m!.alpha = lambda);
   }]],
 ]
 
