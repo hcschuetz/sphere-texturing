@@ -30,6 +30,7 @@ export class RoundedBox {
     const sines = subdivide(0, TAU / 4, steps).map(alpha => Math.sin(alpha));
 
     const positions: B.Vector3[] = [];
+    const normals: B.Vector3[] = [];
     const indices: number[] = [];
     function addTriangle(a: number, b: number, c: number, flip: boolean) {
       if (flip) {
@@ -58,13 +59,11 @@ export class RoundedBox {
               const k = steps - i - j;
               const sineZ = sines[k];
               const z = zSgn * sineZ;
-              const p =
-                new B.Vector3(x, y, z)
-                .normalize()
-                .scaleInPlace(radius)
-                .addInPlaceFromFloats(x0, y0, z0);
+              const normal = new B.Vector3(x, y, z).normalize();
+              const pos = normal.scale(radius).addInPlaceFromFloats(x0, y0, z0);
               const pIdx = positions.length;
-              positions.push(p);
+              positions.push(pos);
+              normals.push(normal)
               cornerPositionIdxs[i].push(pIdx);
               if (i > 0) {
                 if (j > 0) {
@@ -173,6 +172,7 @@ export class RoundedBox {
     });
     const vertexData = new B.VertexData();
     vertexData.positions = positions.flatMap(p => p.asArray());
+    vertexData.normals = normals.flatMap(p => p.asArray());
     vertexData.indices = indices;
     vertexData.applyToMesh(mesh);
   }
