@@ -3,7 +3,7 @@ import * as G from "@babylonjs/gui";
 import * as M from "mobx";
 import * as T from "./triangulation";
 import { MotionController, easeInOut, map2, radToDeg, slerp, subdivide, zip } from "./utils";
-import { RoundedBox } from "./RoundedBox";
+import RoundedBox from "./RoundedBox";
 // import { log } from "./debug";
 
 const params = new URL(document.URL).searchParams;
@@ -67,23 +67,23 @@ light4.intensity = 0.5;
 const n = Number.parseInt(params.get("n") ?? "6");
 
 const roundedBox = new RoundedBox("box", {
-  xs: [.4, -1],
-  ys: [.4, 0],
-  zs: [.7, -.2],
+  xs: [-1, .4],
+  ys: [0, .4],
+  zs: [-.2, .7],
   radius: Number.parseFloat(params.get("boxRadius") ?? ".2"),
   steps: n,
 }, scene);
 const boxMaterial = new B.MultiMaterial("multi", scene);
 boxMaterial.subMaterials.push(
-  createStandardMaterial("faceMat", {
-    diffuseColor: B.Color3.Gray(),
-  }),
-  createStandardMaterial("edgeMat", {
-    diffuseColor: B.Color3.Blue(),
-  }),
   createStandardMaterial("cornerMat", {
     diffuseColor: B.Color3.Red(),
-  }),
+  }, scene),
+  createStandardMaterial("edgeMat", {
+    diffuseColor: B.Color3.Blue(),
+  }, scene),
+  createStandardMaterial("faceMat", {
+    diffuseColor: B.Color3.Gray(),
+  }, scene),
 );
 roundedBox.material = boxMaterial;
 

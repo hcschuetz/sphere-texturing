@@ -1,191 +1,178 @@
 import * as B from "@babylonjs/core";
 import { subdivide, TAU } from "./utils";
 
-const signs = [1, -1];
+// TODO Support single-value dimensions.
+// In that case do not create the corresponding faces and edges.
+// Identify the coinciding vertices of adjacent corners?
+
+// TODO Or support partial rounded boxes more generally.
+// How to specify what to include and what to exclude?
+
+// TODO Support textures and UV coordinates (not just our per-triangle `(u, v)`)
+// (How do we want to attach textures conceptually?)
+
+enum Mat { CORNER, EDGE, FACE };
+const mats = Object.values(Mat).filter(v => typeof v === "string");
+
+const signs: [number, number] = [-1, 1];
 
 /**
  * A Box with (surprise!) rounded corners and edges.
  *
  * Can take a `MultiMaterial` with 3 sub-materials for faces/edges/corners.
+ * 
+ * Notice that the `radius` goes on top of the dimensions.
+ * That is, we do not grind off the edges and corners of a `xs`/`ys`/`zs` box
+ * to make them round.  We rather pack such a box in a `radius`-thick wrapper.
+ * 
+ * `options.steps` gives the number of segments into which a quarter-circle
+ * of the rounding is divided.
  */
-export class RoundedBox extends B.Mesh {
+export default class RoundedBox extends B.Mesh {
   constructor(
     name: string,
     options: {
-      xs?: [number, number];
-      ys?: [number, number];
-      zs?: [number, number];
-      radius?: number; steps?: number;
+      xs?: [number, number], ys?: [number, number], zs?: [number, number],
+      radius?: number, steps?: number,
     } = {},
     scene?: B.Scene
   ) {
     super(name, scene);
 
-    const { xs = signs, ys = signs, zs = signs, radius = 0.2, steps = 6 } = options;
+    const {
+      xs = signs, ys = signs, zs = signs,
+      radius = 0.2, steps = 6
+    } = options;
 
-    const fractions = subdivide(0, 1, steps);
-    const sines = fractions.map(alpha => Math.sin(TAU/4 * alpha));
-    // Use fractions for a geodesic polyhedron or sines for sine-based placement.
+    // ========== VERTEX UTILS ==========
 
-    let nVertices = 0;
-    const positions: number[] = [];
-    const normals: number[] = [];
+    /**
+     * Total number of vertices in the first `i` vertex rows
+     * in a sub-triangulated triangle
+     */
+    const rowVertices = (i: number) =>
+      // This would be `i * (steps + 1)` if all rows had `steps + 1` vertices.
+      // Subtract `i * (i - 1) / 2` to correct for the decreasing row lengths.
+      // Then simplify the formula:
+      i * (2 * steps + 3 - i) / 2;
+    const verticesPerCorner = rowVertices(steps + 1);
+    const nCoords = 8 * verticesPerCorner * 3;
+    const positions = new Float32Array(nCoords);
+    const normals = new Float32Array(nCoords);
 
-    function addVertex(position: B.Vector3, normal: B.Vector3): number {
-      normals.push(normal.x, normal.y, normal.z)
-      positions.push(position.x, position.y, position.z);
-      return nVertices++;
+    /** Compute a vertex index from the "logical" vertex position */
+    const vtx = (
+      xIdx: number, yIdx: number, zIdx: number, // which corner?
+      i: number, j: number, // where in the rounded corner's triangulation?
+    ): number =>
+      ((xIdx * 2 + yIdx) * 2 + zIdx) * verticesPerCorner + rowVertices(i) + j;
+
+    function setVertexData(
+      idx: number, position: B.Vector3, normal: B.Vector3,
+    ): void {
+      let idx3 = 3 * idx;
+      positions[idx3] = position.x; normals[idx3] = normal.x; idx3++;
+      positions[idx3] = position.y; normals[idx3] = normal.y; idx3++;
+      positions[idx3] = position.z; normals[idx3] = normal.z;
     }
 
-    const vertices: number[/* xIdx */][/* yIdx */][/* zIdx */][/* i */][/* j */] = [];
+    // ========== TRIANGLE UTILS ==========
 
-    // three (flattened) lists of triangles:
-    const faces: number[] = [];
-    const edges: number[] = [];
-    const corners: number[] = [];
+    const nTriangles = 6 * 2 + 12 * steps * 2 + 8 * steps**2;
+    const indices = new Uint32Array(nTriangles * 3);
+    const matIdxs = new Uint8Array(nTriangles);
 
-    xs.forEach((x0, xIdx) => {
+    let vertexIdx = 0;
+    let flip: boolean;
+    let matIdx: number;
+
+    function triangle(vtxLocal: (u: number, v: number) => number) {
+      indices[vertexIdx * 3 + 0] = vtxLocal(0, 0);
+      indices[vertexIdx * 3 + 1] = flip! ? vtxLocal(1, 0) : vtxLocal(0, 1);
+      indices[vertexIdx * 3 + 2] = flip! ? vtxLocal(0, 1) : vtxLocal(1, 0);
+      matIdxs[vertexIdx] = matIdx;
+      vertexIdx++;
+    }
+
+    function quadrangle(vtxLocal: (u: number, v: number) => number) {
+      triangle(vtxLocal);
+      triangle((u, v) => vtxLocal(1-u, 1-v));
+    }
+
+    // ========== CREATE VERTICES AND TRIANGLES ==========
+
+    const sines = subdivide(0, 1, steps).map(alpha => Math.sin(TAU/4 * alpha));
+
+    xs.forEach((x, xIdx) => {
       const xSgn = signs[xIdx];
-      vertices[xIdx] = [];
-      ys.forEach((y0, yIdx) => {
+      ys.forEach((y, yIdx) => {
         const ySgn = signs[yIdx];
-        vertices[xIdx][yIdx] = [];
-        zs.forEach((z0, zIdx) => {
+        zs.forEach((z, zIdx) => {
           const zSgn = signs[zIdx];
-          const cornerVertices: number[/* i */][/* j */] = [];
-          vertices[xIdx][yIdx][zIdx] = cornerVertices;
-
-          const flip = xSgn * ySgn * zSgn < 0;
-          function addTriangle(
-            triangles: number[], a: number, b: number, c: number
-          ) {
-            if (flip) {
-              triangles.push(a, c, b);
-            } else {
-              triangles.push(a, b, c);
-            }
-          }
-          function addQuadrangle(
-            triangles: number[], a: number, b: number, c: number, d: number
-          ) {
-            addTriangle(triangles, a, b, c);
-            addTriangle(triangles, a, c, d);
-          }
-
+          flip = xSgn * ySgn * zSgn < 0;
           sines.forEach((sineX, i) => {
-            const x = xSgn * sineX;
-            cornerVertices[i] = [];
+            const xOff = xSgn * sineX;
+            /** Is it time to draw edges and faces parallel to the x axis? */
+            const doX = xIdx === 1 && i === 0;
             sines.slice(0, steps - i + 1).forEach((sineY, j) => {
-              const y = ySgn * sineY;
+              const yOff = ySgn * sineY;
+              const doY = yIdx === 1 && j === 0;
 
-              // no loop for k as it is determined by i and j:
+              // no loop for k as it is fully determined by i and j:
               const k = steps - i - j;
               const sineZ = sines[k];
-              const z = zSgn * sineZ;
+              const zOff = zSgn * sineZ;
+              const doZ = zIdx === 1 && k === 0;
 
-              const normal = new B.Vector3(x, y, z).normalize();
-              const vertex = addVertex(
-                normal.scale(radius).addInPlaceFromFloats(x0, y0, z0),
-                normal,
-              );
-              cornerVertices[i][j] = vertex;
+              const normal = new B.Vector3(xOff, yOff, zOff).normalize();
+              const position = normal.scale(radius).addInPlaceFromFloats(x, y, z);
+              setVertexData(vtx(xIdx, yIdx, zIdx, i, j), position, normal);
 
-              // ===== Corners =====
-              if (i > 0) {
-                if (j > 0) {
-                  addTriangle(corners,
-                    vertex,
-                    cornerVertices[i][j - 1],
-                    cornerVertices[i - 1][j],
-                  );
-                }
-                addTriangle(corners,
-                  vertex,
-                  cornerVertices[i - 1][j],
-                  cornerVertices[i - 1][j + 1],
-                );
-              }
+              matIdx = Mat.CORNER;
+              if (i > 0)          triangle((u, v) => vtx(xIdx, yIdx, zIdx, i-1+u, j+v));
+              if (i > 0 && j > 0) triangle((u, v) => vtx(xIdx, yIdx, zIdx, i-u  , j-v));
 
-              // ===== Edges =====
-              if (xIdx === 1 && i === 0 && j > 0) {
-                addQuadrangle(edges,
-                  vertex,
-                  cornerVertices[0][j - 1],
-                  vertices[0][yIdx][zIdx][0][j - 1],
-                  vertices[0][yIdx][zIdx][0][j],
-                );
-              }
-              if (yIdx === 1 && j === 0 && i > 0) {
-                addQuadrangle(edges,
-                  vertex,
-                  vertices[xIdx][0][zIdx][i][0],
-                  vertices[xIdx][0][zIdx][i - 1][0],
-                  cornerVertices[i - 1][0],
-                );
-              }
-              if (zIdx === 1 && k === 0 && i > 0) {
-                addQuadrangle(edges,
-                  vertex,
-                  cornerVertices[i - 1][j + 1],
-                  vertices[xIdx][yIdx][0][i - 1][j + 1],
-                  vertices[xIdx][yIdx][0][i][j],
-                );
-              }
+              matIdx = Mat.EDGE;
+              if (doX && j > 0) quadrangle((u, v) => vtx(v   , yIdx, zIdx, i  , j-u));
+              if (doY && i > 0) quadrangle((u, v) => vtx(xIdx, u   , zIdx, i-v, j  ));
+              if (doZ && i > 0) quadrangle((u, v) => vtx(xIdx, yIdx, v   , i-u, j+u));
 
-              // ===== Faces =====
-              if (xIdx === 1 && yIdx === 1 && i === 0 && j === 0) {
-                addQuadrangle(faces,
-                  vertex,
-                  vertices[1][0][zIdx][0][0],
-                  vertices[0][0][zIdx][0][0],
-                  vertices[0][1][zIdx][0][0],
-                );
-              }
-              if (xIdx === 1 && zIdx === 1 && i === 0 && k === 0) {
-                addQuadrangle(faces,
-                  vertex,
-                  vertices[0][yIdx][1][0][steps],
-                  vertices[0][yIdx][0][0][steps],
-                  vertices[1][yIdx][0][0][steps],
-                );
-              }
-              if (yIdx === 1 && zIdx === 1 && j === 0 && k === 0) {
-                addQuadrangle(faces,
-                  vertex,
-                  vertices[xIdx][1][0][steps][0],
-                  vertices[xIdx][0][0][steps][0],
-                  vertices[xIdx][0][1][steps][0],
-                );
-              }
+              matIdx = Mat.FACE;
+              if (doX && doY) quadrangle((u, v) => vtx(u   , v   , zIdx, i, j));
+              if (doX && doZ) quadrangle((u, v) => vtx(v   , yIdx, u   , i, j));
+              if (doY && doZ) quadrangle((u, v) => vtx(xIdx, u   , v   , i, j));
             });
           });
         });
       });
     });
 
-    const triangless = [faces, edges, corners];
+    // ========== BUILD THE MESH ==========
+    // ... grouping triangles by material
 
-    const vertexData = new B.VertexData();
-    vertexData.positions = positions;
-    vertexData.normals = normals;
-    vertexData.indices = triangless.flat();
-    vertexData.applyToMesh(this);
+    // Set up group structure:
+    const counts = mats.map(() => 0);
+    matIdxs.forEach(m => counts[m] += 3);
 
-    this.subMeshes = [];
     let sum = 0;
-    triangless.forEach((triangles, i) => {
-      // The documentation of B.SubMesh is unclear/misleading regarding
-      // the lengths to be provided:
-      // - Should we give the number of vertices or the number of coordinate
-      //   values (which is 3 times the former)?
-      // - Should we give the number of triangles or the number of vertex
-      //   indices (which is 3 times the former)?
-      // Experiments show that we need the number of vertex indices used for
-      // defining the triangles, not the number of triangles.
-      // The `verticesCount` parameter seems not to matter at all, but for
-      // analogy we give the number of coordinates, not the number of vertices.
-      new B.SubMesh(i, 0, positions.length, sum, triangles.length, this);
-      sum += triangles.length;
+    const starts = counts.map(count => {
+      const start = sum;
+      sum += count;
+      return start;
     });
+
+    // Move indices to their groups:
+    const fillPointers = starts.map(start => start);
+    new Uint32Array(indices).forEach((index, i) => {
+      indices[fillPointers[matIdxs[Math.floor(i/3)]]++] = index;
+    });
+
+    // Set up mesh ...
+    Object.assign(new B.VertexData(), {positions, normals, indices})
+    .applyToMesh(this);
+
+    // ... and sub-meshes:
+    this.subMeshes = [];
+    mats.forEach((_, m) => new B.SubMesh(m, 0, nCoords, starts[m], counts[m], this));
   }
 }
