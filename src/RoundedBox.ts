@@ -1,14 +1,14 @@
 import * as B from "@babylonjs/core";
-import * as M from "mobx";
 import { subdivide, TAU } from "./utils";
 
 const signs = [1, -1];
 
-export class RoundedBox {
-  position: B.Vector3;
-  /** Should have 3 sub-materials for faces/edges/corners */
-  material: B.Nullable<B.MultiMaterial> = null;
-
+/**
+ * A Box with rounded corners and edges. (Surprise!)
+ *
+ * Can take a `MultiMaterial` with 3 sub-materials for faces/edges/corners.
+ */
+export class RoundedBox extends B.Mesh {
   constructor(
     name: string,
     options: {
@@ -19,15 +19,9 @@ export class RoundedBox {
     },
     scene?: B.Scene
   ) {
-    M.makeObservable(this, {
-      position: M.observable,
-      material: M.observable,
-    });
+    super(name, scene);
 
     const { xs, ys, zs, radius = 0.1, steps = 6 } = options;
-
-    const mesh = new B.Mesh(name, scene);
-    M.autorun(() => mesh.material = this.material);
 
     const fractions = subdivide(0, 1, steps);
     const sines = fractions.map(alpha => Math.sin(TAU/4 * alpha));
@@ -162,12 +156,12 @@ export class RoundedBox {
     vertexData.positions = positions.flatMap(p => p.asArray());
     vertexData.normals = normals.flatMap(p => p.asArray());
     vertexData.indices = indicess.flat();
-    vertexData.applyToMesh(mesh);
+    vertexData.applyToMesh(this);
 
-    mesh.subMeshes = [];
+    this.subMeshes = [];
     let sum = 0;
     indicess.forEach((indices, i) => {
-      new B.SubMesh(i, 0, positions.length, sum, indices.length, mesh);
+      new B.SubMesh(i, 0, positions.length, sum, indices.length, this);
       sum += indices.length;
     });
   }
