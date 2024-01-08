@@ -37,43 +37,44 @@ export class RoundedBox extends B.Mesh {
       return idx;
     }
 
-    const posIdxs: number[/* xIdx */][/* yIdx */][/* zIdx */][/* i */][/* j */] = [];
+    const vertices: number[/* xIdx */][/* yIdx */][/* zIdx */][/* i */][/* j */] = [];
 
+    // three (flattened) lists of triangles:
     const faces: number[] = [];
     const edges: number[] = [];
     const corners: number[] = [];
 
     xs.forEach((x0, xIdx) => {
       const xSgn = signs[xIdx];
-      posIdxs[xIdx] = [];
+      vertices[xIdx] = [];
       ys.forEach((y0, yIdx) => {
         const ySgn = signs[yIdx];
-        posIdxs[xIdx][yIdx] = [];
+        vertices[xIdx][yIdx] = [];
         zs.forEach((z0, zIdx) => {
           const zSgn = signs[zIdx];
-          const cornerPosIdxs: number[/* i */][/* j */] = [];
-          posIdxs[xIdx][yIdx][zIdx] = cornerPosIdxs;
+          const cornerVertices: number[/* i */][/* j */] = [];
+          vertices[xIdx][yIdx][zIdx] = cornerVertices;
 
           const flip = xSgn * ySgn * zSgn < 0;
           function addTriangle(
-            indices: number[], a: number, b: number, c: number
+            triangles: number[], a: number, b: number, c: number
           ) {
             if (flip) {
-              indices.push(a, c, b);
+              triangles.push(a, c, b);
             } else {
-              indices.push(a, b, c);
+              triangles.push(a, b, c);
             }
           }
           function addQuadrangle(
-            indices: number[], a: number, b: number, c: number, d: number
+            triangles: number[], a: number, b: number, c: number, d: number
           ) {
-            addTriangle(indices, a, b, c);
-            addTriangle(indices, a, c, d);
+            addTriangle(triangles, a, b, c);
+            addTriangle(triangles, a, c, d);
           }
 
           sines.forEach((sineX, i) => {
             const x = xSgn * sineX;
-            cornerPosIdxs[i] = [];
+            cornerVertices[i] = [];
             sines.slice(0, steps - i + 1).forEach((sineY, j) => {
               const y = ySgn * sineY;
 
@@ -83,77 +84,77 @@ export class RoundedBox extends B.Mesh {
               const z = zSgn * sineZ;
 
               const normal = new B.Vector3(x, y, z).normalize();
-              const pIdx = addVertex(
+              const vertex = addVertex(
                 normal.scale(radius).addInPlaceFromFloats(x0, y0, z0),
                 normal,
               );
-              cornerPosIdxs[i][j] = pIdx;
+              cornerVertices[i][j] = vertex;
 
               // ===== Corners =====
               if (i > 0) {
                 if (j > 0) {
                   addTriangle(corners,
-                    pIdx,
-                    cornerPosIdxs[i][j - 1],
-                    cornerPosIdxs[i - 1][j],
+                    vertex,
+                    cornerVertices[i][j - 1],
+                    cornerVertices[i - 1][j],
                   );
                 }
                 addTriangle(corners,
-                  pIdx,
-                  cornerPosIdxs[i - 1][j],
-                  cornerPosIdxs[i - 1][j + 1],
+                  vertex,
+                  cornerVertices[i - 1][j],
+                  cornerVertices[i - 1][j + 1],
                 );
               }
 
               // ===== Edges =====
               if (xIdx === 1 && i === 0 && j > 0) {
                 addQuadrangle(edges,
-                  pIdx,
-                  cornerPosIdxs[0][j - 1],
-                  posIdxs[0][yIdx][zIdx][0][j - 1],
-                  posIdxs[0][yIdx][zIdx][0][j],
+                  vertex,
+                  cornerVertices[0][j - 1],
+                  vertices[0][yIdx][zIdx][0][j - 1],
+                  vertices[0][yIdx][zIdx][0][j],
                 );
               }
               if (yIdx === 1 && j === 0 && i > 0) {
                 addQuadrangle(edges,
-                  pIdx,
-                  posIdxs[xIdx][0][zIdx][i][0],
-                  posIdxs[xIdx][0][zIdx][i - 1][0],
-                  cornerPosIdxs[i - 1][0],
+                  vertex,
+                  vertices[xIdx][0][zIdx][i][0],
+                  vertices[xIdx][0][zIdx][i - 1][0],
+                  cornerVertices[i - 1][0],
                 );
               }
               if (zIdx === 1 && k === 0 && i > 0) {
                 addQuadrangle(edges,
-                  pIdx,
-                  cornerPosIdxs[i - 1][j + 1],
-                  posIdxs[xIdx][yIdx][0][i - 1][j + 1],
-                  posIdxs[xIdx][yIdx][0][i][j],
+                  vertex,
+                  cornerVertices[i - 1][j + 1],
+                  vertices[xIdx][yIdx][0][i - 1][j + 1],
+                  vertices[xIdx][yIdx][0][i][j],
                 );
               }
 
               // ===== Faces =====
               if (xIdx === 1 && yIdx === 1 && i === 0 && j === 0) {
                 addQuadrangle(faces,
-                  pIdx,
-                  posIdxs[1][0][zIdx][0][0],
-                  posIdxs[0][0][zIdx][0][0],
-                  posIdxs[0][1][zIdx][0][0],
+                  vertex,
+                  vertices[1][0][zIdx][0][0],
+                  vertices[0][0][zIdx][0][0],
+                  vertices[0][1][zIdx][0][0],
                 );
               }
               if (xIdx === 1 && zIdx === 1 && i === 0 && k === 0) {
                 addQuadrangle(faces,
-                  pIdx,
-                  posIdxs[0][yIdx][1][0][steps],
-                  posIdxs[0][yIdx][0][0][steps],
-                  posIdxs[1][yIdx][0][0][steps],
+                  vertex,
+                  vertices[0][yIdx][1][0][steps],
+                  vertices[0][yIdx][0][0][steps],
+                  vertices[1][yIdx][0][0][steps],
                 );
               }
               if (yIdx === 1 && zIdx === 1 && j === 0 && k === 0) {
                 addQuadrangle(faces,
-                  pIdx,
-                  posIdxs[xIdx][1][0][steps][0],
-                  posIdxs[xIdx][0][0][steps][0],
-                  posIdxs[xIdx][0][1][steps][0],
+                  vertex,
+                  vertices[xIdx][1][0][steps][0],
+                  vertices[xIdx][0][0][steps][0],
+                  vertices[xIdx][0][1][steps][0],
                 );
               }
             });
@@ -162,17 +163,17 @@ export class RoundedBox extends B.Mesh {
       });
     });
 
-    const indicess = [faces, edges, corners];
+    const triangless = [faces, edges, corners];
 
     const vertexData = new B.VertexData();
     vertexData.positions = positions.flatMap(p => p.asArray());
     vertexData.normals = normals.flatMap(p => p.asArray());
-    vertexData.indices = indicess.flat();
+    vertexData.indices = triangless.flat();
     vertexData.applyToMesh(this);
 
     this.subMeshes = [];
     let sum = 0;
-    indicess.forEach((indices, i) => {
+    triangless.forEach((indices, i) => {
       new B.SubMesh(i, 0, positions.length, sum, indices.length, this);
       sum += indices.length;
     });
