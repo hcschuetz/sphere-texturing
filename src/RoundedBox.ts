@@ -4,7 +4,7 @@ import { subdivide, TAU } from "./utils";
 const signs = [1, -1];
 
 /**
- * A Box with rounded corners and edges. (Surprise!)
+ * A Box with (surprise!) rounded corners and edges.
  *
  * Can take a `MultiMaterial` with 3 sub-materials for faces/edges/corners.
  */
@@ -25,24 +25,36 @@ export class RoundedBox extends B.Mesh {
 
     const fractions = subdivide(0, 1, steps);
     const sines = fractions.map(alpha => Math.sin(TAU/4 * alpha));
-    // Use fractions for a geodesic polyhedron and sines for sine-based placement.
+    // Use fractions for a geodesic polyhedron or sines for sine-based placement.
 
     const positions: B.Vector3[] = [];
     const normals: B.Vector3[] = [];
+
+    function addVertex(position: B.Vector3, normal: B.Vector3): number {
+      const idx = positions.length;
+      normals.push(normal)
+      positions.push(position);
+      return idx;
+    }
+
+    const posIdxs: number[/* xIdx */][/* yIdx */][/* zIdx */][/* i */][/* j */] = [];
+
     const faces: number[] = [];
     const edges: number[] = [];
     const corners: number[] = [];
-    const posIdxs: number[/* xIdx */][/* yIdx */][/* zIdx */][/* i */][/* j */] = [];
+
     xs.forEach((x0, xIdx) => {
       const xSgn = signs[xIdx];
-      posIdxs.push([]);
+      posIdxs[xIdx] = [];
       ys.forEach((y0, yIdx) => {
         const ySgn = signs[yIdx];
-        posIdxs.at(-1)!.push([]);
+        posIdxs[xIdx][yIdx] = [];
         zs.forEach((z0, zIdx) => {
           const zSgn = signs[zIdx];
-          const flip = xSgn * ySgn * zSgn < 0;
+          const cornerPosIdxs: number[/* i */][/* j */] = [];
+          posIdxs[xIdx][yIdx][zIdx] = cornerPosIdxs;
 
+          const flip = xSgn * ySgn * zSgn < 0;
           function addTriangle(
             indices: number[], a: number, b: number, c: number
           ) {
@@ -52,7 +64,6 @@ export class RoundedBox extends B.Mesh {
               indices.push(a, b, c);
             }
           }
-
           function addQuadrangle(
             indices: number[], a: number, b: number, c: number, d: number
           ) {
@@ -60,22 +71,23 @@ export class RoundedBox extends B.Mesh {
             addTriangle(indices, a, c, d);
           }
 
-          const cornerPosIdxs: number[/* i */][/* j */] = [];
-          posIdxs.at(-1)!.at(-1)!.push(cornerPosIdxs);
           sines.forEach((sineX, i) => {
             const x = xSgn * sineX;
-            cornerPosIdxs.push([]);
+            cornerPosIdxs[i] = [];
             sines.slice(0, steps - i + 1).forEach((sineY, j) => {
               const y = ySgn * sineY;
+
+              // no loop for k as it is determined by i and j:
               const k = steps - i - j;
               const sineZ = sines[k];
               const z = zSgn * sineZ;
+
               const normal = new B.Vector3(x, y, z).normalize();
-              const pos = normal.scale(radius).addInPlaceFromFloats(x0, y0, z0);
-              const pIdx = positions.length;
-              positions.push(pos);
-              normals.push(normal)
-              cornerPosIdxs[i].push(pIdx);
+              const pIdx = addVertex(
+                normal.scale(radius).addInPlaceFromFloats(x0, y0, z0),
+                normal,
+              );
+              cornerPosIdxs[i][j] = pIdx;
 
               // ===== Corners =====
               if (i > 0) {
