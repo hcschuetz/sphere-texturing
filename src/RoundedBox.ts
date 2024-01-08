@@ -27,14 +27,14 @@ export class RoundedBox extends B.Mesh {
     const sines = fractions.map(alpha => Math.sin(TAU/4 * alpha));
     // Use fractions for a geodesic polyhedron or sines for sine-based placement.
 
-    const positions: B.Vector3[] = [];
-    const normals: B.Vector3[] = [];
+    let nVertices = 0;
+    const positions: number[] = [];
+    const normals: number[] = [];
 
     function addVertex(position: B.Vector3, normal: B.Vector3): number {
-      const idx = positions.length;
-      normals.push(normal)
-      positions.push(position);
-      return idx;
+      normals.push(normal.x, normal.y, normal.z)
+      positions.push(position.x, position.y, position.z);
+      return nVertices++;
     }
 
     const vertices: number[/* xIdx */][/* yIdx */][/* zIdx */][/* i */][/* j */] = [];
@@ -166,16 +166,26 @@ export class RoundedBox extends B.Mesh {
     const triangless = [faces, edges, corners];
 
     const vertexData = new B.VertexData();
-    vertexData.positions = positions.flatMap(p => p.asArray());
-    vertexData.normals = normals.flatMap(p => p.asArray());
+    vertexData.positions = positions;
+    vertexData.normals = normals;
     vertexData.indices = triangless.flat();
     vertexData.applyToMesh(this);
 
     this.subMeshes = [];
     let sum = 0;
-    triangless.forEach((indices, i) => {
-      new B.SubMesh(i, 0, positions.length, sum, indices.length, this);
-      sum += indices.length;
+    triangless.forEach((triangles, i) => {
+      // The documentation of B.SubMesh is unclear/misleading regarding
+      // the lengths to be provided:
+      // - Should we give the number of vertices or the number of coordinate
+      //   values (which is 3 times the former)?
+      // - Should we give the number of triangles or the number of vertex
+      //   indices (which is 3 times the former)?
+      // Experiments show that we need the number of vertex indices used for
+      // defining the triangles, not the number of triangles.
+      // The `verticesCount` parameter seems not to matter at all, but for
+      // analogy we give the number of coordinates, not the number of vertices.
+      new B.SubMesh(i, 0, positions.length, sum, triangles.length, this);
+      sum += triangles.length;
     });
   }
 }
