@@ -12,16 +12,16 @@ export class RoundedBox extends B.Mesh {
   constructor(
     name: string,
     options: {
-      xs: [number, number];
-      ys: [number, number];
-      zs: [number, number];
+      xs?: [number, number];
+      ys?: [number, number];
+      zs?: [number, number];
       radius?: number; steps?: number;
-    },
+    } = {},
     scene?: B.Scene
   ) {
     super(name, scene);
 
-    const { xs, ys, zs, radius = 0.1, steps = 6 } = options;
+    const { xs = signs, ys = signs, zs = signs, radius = 0.2, steps = 6 } = options;
 
     const fractions = subdivide(0, 1, steps);
     const sines = fractions.map(alpha => Math.sin(TAU/4 * alpha));
