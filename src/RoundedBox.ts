@@ -11,7 +11,7 @@ import { subdivide, TAU } from "./utils";
 // TODO Support textures and UV coordinates (not just our per-triangle `(u, v)`)
 // (How do we want to attach textures conceptually?)
 
-enum Mat { CORNER, EDGE, FACE };
+enum Mat { FACE, EDGE, CORNER };
 const mats = Object.values(Mat).filter(v => typeof v === "string");
 
 const signs: [number, number] = [-1, 1];

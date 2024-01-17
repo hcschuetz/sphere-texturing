@@ -75,14 +75,14 @@ const roundedBox = new RoundedBox("box", {
 }, scene);
 const boxMaterial = new B.MultiMaterial("multi", scene);
 boxMaterial.subMaterials.push(
-  createStandardMaterial("cornerMat", {
-    diffuseColor: B.Color3.Red(),
+  createStandardMaterial("faceMat", {
+    diffuseColor: B.Color3.Gray(),
   }, scene),
   createStandardMaterial("edgeMat", {
     diffuseColor: B.Color3.Blue(),
   }, scene),
-  createStandardMaterial("faceMat", {
-    diffuseColor: B.Color3.Gray(),
+  createStandardMaterial("cornerMat", {
+    diffuseColor: B.Color3.Red(),
   }, scene),
 );
 roundedBox.material = boxMaterial;
