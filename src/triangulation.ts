@@ -1,5 +1,5 @@
 import { Vector3 } from "@babylonjs/core";
-import { TAU, subdivide, slerp, map2, lerp, frac } from "./utils";
+import { TAU, subdivide, slerp, map2, lerp, frac, zip } from "./utils";
 
 /**
 Actually triangulations should not just be arbitrary 2-level arrays of points,
@@ -99,6 +99,59 @@ function findSineRatio(p: Vector3): Vector3 {
 }
 export const asinBased = (n: number, refinement?: number) =>
   map2(flat(n, refinement), findSineRatio);
+
+/**
+ * **Normalized** mean of a number of vectors.
+ * 
+ * Notice that this is not a "canonical" implementation.
+ * Probably canonical definitions only exist for special cases such as
+ * the mean of two (non-opposite) points.
+ * But for our purposes this should not matter.
+ */
+const mean = (...vectors: Vector3[]) =>
+  vectors.reduce((sum, v) => sum.addInPlace(v), Vector3.Zero()).normalize();
+
+export const balance = (t: Triangulation): Triangulation =>
+  t.map((row, i, tt) => row.map((v, j) => {
+    const n = t.length - 1;
+    const k = n - i - j;
+    return (
+      i === 0 ? (j === 0 || k === 0 ? v : mean(tt[0][j-1], tt[0][j+1])) :
+      j === 0 ? (i === 0 || k === 0 ? v : mean(tt[i-1][0], tt[i+1][0])) :
+      k === 0 ? (i === 0 || j === 0 ? v : mean(tt[i-1][j+1], tt[i+1][j-1])) :
+      mean(
+        tt[i+1][j-1], tt[i+1][j],
+        tt[i][j-1], tt[i][j+1],
+        tt[i-1][j], tt[i-1][j+1],
+      )
+    );
+  }));
+
+const distSqSumOf = (a: Triangulation, b: Triangulation): number =>
+  zip(Vector3.DistanceSquared)(a.flat(), b.flat())
+  .reduce((a, b) => a + b, 0);
+
+export const balanced = (n: number) => {
+  let t = sineBased(n); // Should not matter much where we begin
+  const t0 = t;
+  const nVertices = t.flat().length;
+  for (let r = 0; r < 100; r++) {
+    const refined = balance(t);
+    const avgDist = Math.sqrt(distSqSumOf(t, refined) / nVertices);
+    // console.log("refined", r, avgDist, Math.log(avgDist));
+    t = refined;
+    if (avgDist < 1e-8) {
+      break;
+    }
+  }
+  return t;
+}
+
+export const triangulationFns: Record<string, (n: number) => Triangulation> = {
+  flat, collapsed,
+  geodesics, parallels, evenGeodesics,
+  sines, sineBased, sineBased2, asinBased, balanced,
+}
 
 export const rays = (n: number, tr: Triangulation): Vector3[][] =>
   tr.flatMap(points => points.map(point => [Vector3.ZeroReadOnly, point]));

@@ -1,5 +1,6 @@
 import * as B from "@babylonjs/core";
-import { subdivide, TAU } from "./utils";
+import * as T from "./triangulation";
+import { map2 } from "./utils";
 
 // TODO Support single-value dimensions.
 // In that case do not create the corresponding faces and edges.
@@ -34,14 +35,16 @@ export default class RoundedBox extends B.Mesh {
     options: {
       xs?: [number, number], ys?: [number, number], zs?: [number, number],
       radius?: number, steps?: number,
-    } = {},
+      triangulationFn: (steps: number) => T.Triangulation,
+    },
     scene?: B.Scene
   ) {
     super(name, scene);
 
     const {
       xs = signs, ys = signs, zs = signs,
-      radius = 0.2, steps = 6
+      radius = 0.2, steps = 6,
+      triangulationFn,
     } = options;
 
     // ========== VERTEX UTILS ==========
@@ -101,7 +104,7 @@ export default class RoundedBox extends B.Mesh {
 
     // ========== CREATE VERTICES AND TRIANGLES ==========
 
-    const sines = subdivide(0, 1, steps).map(alpha => Math.sin(TAU/4 * alpha));
+    const cornerVertices = triangulationFn(steps);
 
     xs.forEach((x, xIdx) => {
       const xSgn = signs[xIdx];
@@ -110,21 +113,19 @@ export default class RoundedBox extends B.Mesh {
         zs.forEach((z, zIdx) => {
           const zSgn = signs[zIdx];
           flip = xSgn * ySgn * zSgn < 0;
-          sines.forEach((sineX, i) => {
-            const xOff = xSgn * sineX;
-            /** Is it time to draw edges and faces parallel to the x axis? */
-            const doX = xIdx === 1 && i === 0;
-            sines.slice(0, steps - i + 1).forEach((sineY, j) => {
-              const yOff = ySgn * sineY;
-              const doY = yIdx === 1 && j === 0;
+          // In our triangulations i grows in the y direction, j in the z
+          // direction and k in the x direction.
+          cornerVertices.forEach((row, i) => {
+            /** Is it time to draw edges and faces parallel to the y axis? */
+            const doY = yIdx === 1 && i === 0;
+            row.forEach((point, j) => {
+              const doZ = zIdx === 1 && j === 0;
 
               // no loop for k as it is fully determined by i and j:
               const k = steps - i - j;
-              const sineZ = sines[k];
-              const zOff = zSgn * sineZ;
-              const doZ = zIdx === 1 && k === 0;
+              const doX = xIdx === 1 && k === 0;
 
-              const normal = new B.Vector3(xOff, yOff, zOff).normalize();
+              const normal = new B.Vector3(xSgn * point.x, ySgn * point.y, zSgn * point.z);
               const position = normal.scale(radius).addInPlaceFromFloats(x, y, z);
               setVertexData(vtx(xIdx, yIdx, zIdx, i, j), position, normal);
 
@@ -133,9 +134,9 @@ export default class RoundedBox extends B.Mesh {
               if (i > 0 && j > 0) triangle((u, v) => vtx(xIdx, yIdx, zIdx, i-u  , j-v));
 
               matIdx = Mat.EDGE;
-              if (doX && j > 0) quadrangle((u, v) => vtx(v   , yIdx, zIdx, i  , j-u));
-              if (doY && i > 0) quadrangle((u, v) => vtx(xIdx, u   , zIdx, i-v, j  ));
-              if (doZ && i > 0) quadrangle((u, v) => vtx(xIdx, yIdx, v   , i-u, j+u));
+              if (doX && j > 0) quadrangle((u, v) => vtx(u   , yIdx, zIdx, i+v, j-v));
+              if (doY && j > 0) quadrangle((u, v) => vtx(xIdx, v   , zIdx, i  , j-u));
+              if (doZ && i > 0) quadrangle((u, v) => vtx(xIdx, yIdx, u   , i-v, j  ));
 
               matIdx = Mat.FACE;
               if (doX && doY) quadrangle((u, v) => vtx(u   , v   , zIdx, i, j));

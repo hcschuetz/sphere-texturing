@@ -23,6 +23,18 @@ type V3 = B.Vector3;
 const V3 = B.Vector3;
 const v3 = (x: number, y: number, z: number) => new V3(x, y, z);
 
+const red = B.Color3.Red();
+const green = B.Color3.Green();
+const blue = B.Color3.Blue();
+
+const cyan = B.Color3.Teal();
+const magenta = B.Color3.Magenta();
+const yellow = B.Color3.Yellow();
+
+const white = B.Color3.White();
+const gray = B.Color3.Gray();
+const black = B.Color3.Black();
+
 const TAU = 2 * Math.PI;
 
 
@@ -65,6 +77,7 @@ light4.intensity = 0.5;
 
 
 const n = Number.parseInt(params.get("n") ?? "6");
+const rbt = T.triangulationFns[params.get("rbt") ?? "balanced"] ?? T.flat;
 
 const roundedBox = new RoundedBox("box", {
   xs: [-1, .4],
@@ -72,18 +85,13 @@ const roundedBox = new RoundedBox("box", {
   zs: [-.2, .7],
   radius: Number.parseFloat(params.get("boxRadius") ?? ".2"),
   steps: n,
+  triangulationFn: rbt,
 }, scene);
 const boxMaterial = new B.MultiMaterial("multi", scene);
 boxMaterial.subMaterials.push(
-  createStandardMaterial("faceMat", {
-    diffuseColor: B.Color3.Gray(),
-  }, scene),
-  createStandardMaterial("edgeMat", {
-    diffuseColor: B.Color3.Blue(),
-  }, scene),
-  createStandardMaterial("cornerMat", {
-    diffuseColor: B.Color3.Red(),
-  }, scene),
+  createStandardMaterial("faceMat", {diffuseColor: gray}, scene),
+  createStandardMaterial("edgeMat", {diffuseColor: blue}, scene),
+  createStandardMaterial("cornerMat", {diffuseColor: red}, scene),
 );
 roundedBox.material = boxMaterial;
 
@@ -117,9 +125,8 @@ const octasphereAlpha = M.observable.box(0);
 const origin = B.MeshBuilder.CreateIcoSphere("origin", {
   radius: 0.02,
 }, scene);
-origin.material = createStandardMaterial("originMat", {
-  diffuseColor: B.Color3.Black(),
-}, scene);
+origin.material =
+  createStandardMaterial("originMat", {diffuseColor: black}, scene);
 M.autorun(() => origin.material!.alpha = octasphereAlpha.get());
 
 const octahedron = B.MeshBuilder.CreatePolyhedron("octahedron", {
@@ -137,40 +144,37 @@ const sphere = B.MeshBuilder.CreateSphere("sphere", {
   diameter: 2,
 });
 sphere.material = createStandardMaterial("sphMat", {
-  diffuseColor: new B.Color3(1,1,1),
+  diffuseColor: white,
   alpha: 0,
   // This seems to have no effect:
   sideOrientation: B.VertexData.DOUBLESIDE,
 }, scene);
 M.autorun(() => sphere.material!.alpha = 0.1 * octasphereAlpha.get());
 
-const arc1 = B.MeshBuilder.CreateTube("arc1", {
-  path: subdivide(0, 1, 40).map(lambda =>
-      slerp(v3(1, 0, 0), v3(0, 1, 0), lambda)
-    ),
-  radius: 0.003,
-  tessellation: 6,
-}, scene);
-const arc2 = arc1.clone("arc2");
-arc2.rotate(v3(1, 0, 0), TAU/4);
-const arc3 = arc1.clone("arc3");
-arc3.rotate(v3(0, 1, 0), -TAU/4);
-arc1.material = arc2.material = arc3.material =
-  createStandardMaterial("arcMat", {
-    diffuseColor: B.Color3.Gray(),
-    emissiveColor: B.Color3.Gray(),
-    alpha: 0.4,
-    sideOrientation: B.VertexData.DOUBLESIDE,
+const arc = (name: string, from: B.Vector3, to: B.Vector3, mat: B.Material): B.Mesh => {
+  const a = B.MeshBuilder.CreateTube(name, {
+    path: subdivide(0, 1, 40).map(lambda => slerp(from, to, lambda)),
+    radius: 0.003,
+    tessellation: 6,
   }, scene);
-M.autorun(() => arc1.material!.alpha = octasphereAlpha.get());
+  a.material = mat;
+  return a;
+}
 
-const red = B.Color3.Red();
-const green = B.Color3.Green();
-const blue = B.Color3.Blue();
+const arcMaterial = createStandardMaterial("arcMat", {diffuseColor: gray}, scene);
+M.autorun(() => arcMaterial.alpha = octasphereAlpha.get());
 
-const cyan = B.Color3.Teal();
-const magenta = B.Color3.Magenta();
-const yellow = B.Color3.Yellow();
+arc("arc1", v3(1, 0, 0), v3(0, 1, 0), arcMaterial);
+arc("arc2", v3(0, 1, 0), v3(0, 0, 1), arcMaterial);
+arc("arc3", v3(0, 0, 1), v3(1, 0, 0), arcMaterial);
+
+const arcMaterial2 =
+  createStandardMaterial("arcMat2", {diffuseColor: gray, alpha: 0}, scene);
+
+arc("arc4", v3(1, 0, 0), v3(0, Math.SQRT1_2, Math.SQRT1_2), arcMaterial2);
+arc("arc5", v3(0, 1, 0), v3(Math.SQRT1_2, 0, Math.SQRT1_2), arcMaterial2);
+arc("arc6", v3(0, 0, 1), v3(Math.SQRT1_2, Math.SQRT1_2, 0), arcMaterial2);
+
 
 class TriangulationWithAuxLines extends B.Mesh {
   constructor (
@@ -238,11 +242,8 @@ class Rays {
       alpha: M.observable,
     });
 
-    const color = new B.Color3(.5,.5,.5);
-    const material = createStandardMaterial("rayMat", {
-      diffuseColor: color,
-      // emissiveColor: color,
-    }, scene);
+    const material =
+      createStandardMaterial("rayMat", {diffuseColor: gray}, scene);
     M.autorun(() => material.alpha = this.alpha);
 
     ends.forEach((end, i) => {
@@ -390,7 +391,7 @@ class BarycentricCoordinates {
   }
 }
 
-class AngularBarycentricCoordinates {
+class SphericalBarycentricCoordinates {
   public pos = V3.ZeroReadOnly;
   public alpha = 0;
   public flatness = 0;
@@ -421,7 +422,7 @@ class AngularBarycentricCoordinates {
       const angles = v3(Math.asin(pos.x), Math.asin(pos.y), Math.asin(pos.z));
       const normalized = angles.scale(1 / (angles.x + angles.y + angles.z));
       div.innerHTML = `
-        <span style="text-decoration: underline">Angular Barycentric Coordinates</span>
+        <span style="text-decoration: underline">Spherical Barycentric Coordinates</span>
         <br>
         not normalized (sum ${radToDeg(angles.x + angles.y + angles.z).toFixed(1)}°):
         <br>
@@ -476,7 +477,7 @@ class AngularBarycentricCoordinates {
       }, scene);
       M.autorun(() => material.alpha = this.alpha);
       const arcSteps = 20;
-      const ruler = B.CreateTube("angular_ruler", {
+      const ruler = B.CreateTube("spherical_ruler", {
         updatable: true,
         path: Array.from({length: arcSteps + 1}, () => V3.ZeroReadOnly),
         radius: 0.008,
@@ -581,22 +582,48 @@ class SinesExplanation {
   }
 }
 
+class Hexagon {
+  alpha = 0;
+
+  constructor(t: T.Triangulation) {
+    M.makeObservable(this, {alpha: M.observable});
+    const mat = createStandardMaterial("hexMat", {diffuseColor: green}, scene);
+    M.autorun(() => mat.alpha = this.alpha);
+    const corners = [t[2][1], t[2][2], t[1][3], t[0][3], t[0][2], t[1][1]];
+    const mesh = B.MeshBuilder.CreateTube("hexagon", {
+      path: [...corners, corners[0]],
+      radius: 0.003,
+      tessellation: 6,
+    }, scene);
+    mesh.material = mat;
+    const center = B.MeshBuilder.CreateIcoSphere(`hexCenter`, {
+      radius: 0.01,
+    }, scene);
+    center.position =
+      corners.reduce((sum, c) => sum.addInPlace(c), B.Vector3.Zero())
+      .normalize();
+    center.material = mat;
+  }
+}
+
 const refinement = 10;
 const flatLines = T.flat(n, refinement);
 const geodesics = T.geodesics(n, refinement);
-const parallels = T.parallels(n, refinement);
 const evenGeodesics = T.evenGeodesics(n, refinement);
+const parallels = T.parallels(n, refinement);
 const collapsedLines = T.collapsed(n, refinement);
 
 const flat = T.flat(n);
 const geodesic = T.geodesics(n);
+const onEvenGeodesics = T.evenGeodesics(n);
 const onParallels = T.parallels(n);
 const sines = T.sines(n);
 const sineBased = T.sineBased(n);
-// const sineBased2 = T.sineBased2(n);
+const sineBased2 = T.sineBased2(n);
 const asinBased = T.asinBased(n);
+const balancedOnce = T.balance(asinBased);
+const balanced = T.balanced(n);
 const collapsed = T.collapsed(n);
-const onEvenGeodesics = T.evenGeodesics(n);
 const evenOnEdges = sines.map((row, i) => row.map((vertex, j) =>
   (i === 0 || j === 0 || i + j === n) ? vertex : V3.ZeroReadOnly
 ));
@@ -609,6 +636,8 @@ const evenOnXYEdge = sines.map((row, i) => row.map((vertex, j) =>
 const flatOnXYEdge = flat.map((row, i) => row.map((vertex, j) =>
   j === 0 ? vertex : V3.ZeroReadOnly
 ));
+
+const hexagon = new Hexagon(asinBased);
 
 const demoExpl = new Explanation(`
   See
@@ -656,8 +685,10 @@ const overviewExpl = new Explanation(`
   <div style="color: red;"    >plain normalization<br>(geodesic polyhedron)</div>
   <div style="color: cyan;"   >equispaced geodesics</div>
   <div style="color: magenta;">parallels</div>
-  <div style="color: yellow;" >sine-based</div>
-  <div style="color: white;"  >based on angular </div>
+  <div style="color: yellow;" >sine-based (central proj)</div>
+  <div style="color: blue;"   >sine-based (parallel proj)</div>
+  <div style="color: white;"  >based on spherical barycentric coordinates</div>
+  <div style="color: #0f0;"   >balanced</div>
 `);
 const linksExpl = new Explanation(`
   This application: <a href="https://hcschuetz.github.io/octasphere/dist/">https://hcschuetz.github.io/octasphere/dist/</a>
@@ -669,7 +700,9 @@ const cyanMesh    = new TriangulationWithAuxLines(flatLines, flat, cyan   , 0);
 const yellowMesh  = new TriangulationWithAuxLines(flatLines, flat, yellow , 0);
 const magentaMesh = new TriangulationWithAuxLines(flatLines, flat, magenta, 0);
 const redMesh     = new TriangulationWithAuxLines(geodesics, geodesic, red, 0);
-const whiteMesh   = new TriangulationWithAuxLines(collapsedLines, evenOnEdges, B.Color3.White(), 0);
+const greenMesh   = new TriangulationWithAuxLines(collapsedLines, balancedOnce, green, 0);
+const blueMesh    = new TriangulationWithAuxLines(collapsedLines, sineBased2, blue, 0);
+const whiteMesh   = new TriangulationWithAuxLines(collapsedLines, evenOnEdges, white, 0);
 const rays = new Rays(collapsed.flat(), 0);
 const baryPoints =
   [v3(1,3,2), v3(4,1,1), v3(6,0,0), v3(2,4,0), v3(1,2,3)]
@@ -677,7 +710,7 @@ const baryPoints =
 const bary = new BarycentricCoordinates(baryPoints[0], 0);
 const sinesExpl = new SinesExplanation();
 const angBaryPoints = baryPoints.map(p => p.normalizeToNew());
-const angBary = new AngularBarycentricCoordinates();
+const angBary = new SphericalBarycentricCoordinates();
 
 
 /** Lerp between two V3[][] (of equal shape) */
@@ -746,7 +779,7 @@ const rotate = (
       const lambda1 = 1 - easeInOut(lambda);
       rotateTo(mesh2, lambda1);
       rotateTo(mesh3, -lambda1);
-      mesh2.alpha = mesh3.alpha = Math.sqrt(1 - lambda);    
+      mesh2.alpha = mesh3.alpha = Math.sqrt(1 - lambda);
     }] as Motion]]
   : [],
 ];
@@ -915,7 +948,7 @@ const motions: Motion[][] = [
     cyanMesh.alpha = yellowMesh.alpha = magentaMesh.alpha =
     bary.alpha = 1 - lambda;
   }]],
-  // ***** barycentric => angular barycentric coordinates *****
+  // ***** barycentric => spherical barycentric coordinates *****
   [[0, () => angBary.pos = angBaryPoints[0]],
   [1, lambda => angBary.alpha = lambda]],
   ...angBaryPoints.slice(1).map((p, i) =>
@@ -937,9 +970,32 @@ const motions: Motion[][] = [
   [[0.5, lambda => {
     angBary.alpha = 1 - lambda;
   }]],
-  // ***** asinBased (angular barycentric coordinates) *****
+  // ***** asinBased (spherical barycentric coordinates) *****
   mirror(whiteMesh),
   ...rotate(whiteMesh, yellowMesh, cyanMesh, false),
+  // ***** asinBased => balanced *****
+  [[.5, lambda => {
+    hexagon.alpha = Math.sqrt(lambda);
+  }]],
+  [[0, () => greenMesh.vertices = balancedOnce],
+  [.5, lambda => {
+    greenMesh.alpha = Math.sqrt(lambda);
+    hexagon.alpha = Math.sqrt(1-lambda);
+  }]],
+  [[0, () => {
+    cyanMesh.alpha =
+    yellowMesh.alpha = 0;
+  }],
+  [.5, lambda => {
+    const lambda1 = easeInOut(lambda);
+    greenMesh.vertices = lerp2(lambda1)(balancedOnce, balanced);
+  }],
+  [.5, lambda => {
+    whiteMesh.alpha = Math.sqrt(1 - lambda);
+  }]],
+  // ***** balanced *****
+  mirror(greenMesh),
+  ...rotate(greenMesh, yellowMesh, cyanMesh, false),
   // ***** overview *****
   [[0, () => {
     cyanMesh.vertices = onEvenGeodesics;
@@ -956,29 +1012,37 @@ const motions: Motion[][] = [
     magentaMesh.alpha =
     yellowMesh.alpha =
     redMesh.alpha =
+    whiteMesh.alpha =
+    blueMesh.alpha =
     overviewExpl.alpha = 0;
   }],
-  [1, lambda => {
+  [.5, lambda => {
+    arcMaterial2.alpha =
     cyanMesh.alpha =
     magentaMesh.alpha =
     yellowMesh.alpha =
     redMesh.alpha =
+    whiteMesh.alpha =
+    blueMesh.alpha =
     overviewExpl.alpha = lambda;
   }]],
 
 
 
-  // TODO show sineBased2?
-  // TODO show wireframes
-  // TODO show polyhedra with flat faces or Phong shading
+  // TODO explain sineBased2?
+  // TODO show wireframes?
+  // TODO show polyhedra with flat faces or Phong shading?
 
   // ***** fade out *****
   [[.5, lambda => {
     octasphereAlpha.set(1 - lambda);
+    arcMaterial2.alpha =
     cyanMesh.alpha =
     magentaMesh.alpha =
     yellowMesh.alpha =
     redMesh.alpha =
+    greenMesh.alpha =
+    blueMesh.alpha =
     whiteMesh.alpha =
     overviewExpl.alpha = 1 - lambda;
     linksExpl.alpha = lambda;
