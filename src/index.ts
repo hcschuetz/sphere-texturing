@@ -798,12 +798,12 @@ const motions: Motion[][] = [
     octasphereAlpha.set(lambda);
   }],
   [0, () => boxMaterial.subMaterials.forEach(m => m!.wireframe = false)]],
+  // ***** flat *****
   [[0.5, lambda => {
     magentaMesh.alpha = lambda;
     demoExpl.alpha = 1 - lambda;
     flatExpl.alpha = lambda;
   }]],
-  // ***** flat *****
   mirror(magentaMesh),
   ...rotate(magentaMesh, yellowMesh, cyanMesh, true),
   // ***** flat => geodesic *****
