@@ -392,7 +392,7 @@ So there is an inverse mapping from the face to the spherical triangle.
 
 We use this inverse mapping to map the vertices of the face sub-triangulation
 to the sphere.
-The resulting triangulation is the best I could come up with:
+The resulting triangulation has has some favorable properties:
 - It has equispaced vertices along the meridians
   and the equator.
 - It is symmetric with respect to axis permutations.
@@ -438,20 +438,57 @@ function faceToSphere((x, y, z)) {
 ```
 
 
+Balanced Placement
+------------------
+
+We can also place the vertices in the spherical triangle in such a way that
+- the boundary vertices are equispaced along the delimiting arcs and
+- each inner vertex is "centered" between its six neighbor vertices.
+
+Let us call this placement "balanced".
+It can be approximated iteratively like this:
+
+> - Start with any vertex placement P<sub>0</sub> that evenly subdivides
+>   the three sides of our spherical triangle.
+> - For i = 0, 1, ...
+>   - Compute a new placement P<sub>i+1</sub> from P<sub>i</sub> such that
+>     - each inner vertex of P<sub>i+1</sub> is at the "center" of the
+>       six neighbors of the corresponding vertex in P<sub>i</sub> and
+>     - each boundary vertex of P<sub>i+1</sub> is at the same position
+>       as the corresponding vertex in P<sub>i</sub>.
+>   - Terminate when P<sub>i+1</sub> does not differ "significantly" from
+>     P<sub>i</sub>.
+
+Notes:
+- The word "center" has been put in quotes above
+  because the 3D mean of several points on the unit sphere
+  will generally not be on the unit sphere but inside it.
+  An ad-hoc solution is to perform a central projection, that is, to simply
+  normalize the mean value of the neighbors.
+  Alternatively, we could use some sphere-based definition of "center".
+- The sequence of placements converges to the balanced placement
+  and does not depend on the initial placement of the inner vertices in
+  P<sub>0</sub>.
+- Each iteration step preserves symmetries of the previous placement.
+  The balanced placement is symmetric with respect to axis permutations.
+- The balanced placement (or a good approximation) looks even more uniform
+  than the placement based on spherical barycentric coordinates.
+
+
 Octasphere: Summary
 -------------------
 
-Of the octasphere mappings investigated above I think one could use
+Of the vertex placements investigated above I think one could use
 - the geodesic-polyhedron mapping if simplicity is most important,
-- the mapping based on angular barycentric coordinates if performance is not
+- the balanced placement if performance is not
   an issue (for example because the vertices are pre-computed for one or a few
   values of `n` and re-used in many sphere instances), and
-- the sine-based approach as a compromise between the two.
+- the sine-based approach as a good quality/performance compromise.
 
 The equispaced-geodesics approach and the parallels approach
 require more computation effort than the sine-based approach and
 produce a less uniform and less symmetric vertex placement.
-So these approaches would be recommended only if there is some
+So these approaches would be recommended only if there is an
 application-specific reason to use them.
 
 
