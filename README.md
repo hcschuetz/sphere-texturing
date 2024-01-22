@@ -343,8 +343,8 @@ We can pre-compute and tabulate these values so that no transcendental functions
 need to be applied in the rest of the calculation.
 
 
-Angular Barycentric Coordinates
--------------------------------
+Spherical Barycentric Coordinates
+---------------------------------
 
 We will now construct a mapping that is
 - equispaced along the edges,
@@ -358,6 +358,10 @@ As a first step we will generalize the concept of
 [barycentric coordinates](https://en.wikipedia.org/wiki/Barycentric_coordinate_system)
 from the plane triangle constituting our octahedron face
 to our spherical triangle.
+(Note that various concepts of "spherical barycentric coordinates"
+have already been introduced earlier in the literature.
+How are those concepts related to the one introduced here?
+And could we use those concepts as well?)
 
 A point `(X, Y, Z)` in our spherical triangle can be identified by the three
 angles between the point and each of the three coordinate planes:
@@ -492,6 +496,6 @@ If you know of previous work, please let me know
 [here](https://github.com/hcschuetz/octasphere/discussions/2).
 
 Finally, I am not too happy with the names I am using for the sine-based mapping
-and the mapping based on angular barycentric coordinates.
+and the mapping based on spherical barycentric coordinates.
 Any ideas for better names?  Please give your suggestions
 [here](https://github.com/hcschuetz/octasphere/discussions/1).
