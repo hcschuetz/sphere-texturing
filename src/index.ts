@@ -582,6 +582,8 @@ class SinesExplanation {
   }
 }
 
+const neighborOffsets = [[1, -1], [1, 0], [0, 1], [-1, 1], [-1, 0], [0, -1]];
+
 class Hexagon {
   alpha = 0;
 
@@ -589,9 +591,16 @@ class Hexagon {
     M.makeObservable(this, {alpha: M.observable});
     const mat = createStandardMaterial("hexMat", {diffuseColor: green}, scene);
     M.autorun(() => mat.alpha = this.alpha);
-    const corners = [t[2][1], t[2][2], t[1][3], t[0][3], t[0][2], t[1][1]];
+    if (n < 3) {
+      return;
+    }
+    const [i, j] =
+      n <=  4 ? [1, 1] :
+      n <=  9 ? [1, 2] :
+                [2, 4];
+    const neighbors = neighborOffsets.map(([di, dj]) => t[i + di][j + dj]);
     const mesh = B.MeshBuilder.CreateTube("hexagon", {
-      path: [...corners, corners[0]],
+      path: [...neighbors, neighbors[0]],
       radius: 0.003,
       tessellation: 6,
     }, scene);
@@ -600,7 +609,7 @@ class Hexagon {
       radius: 0.01,
     }, scene);
     center.position =
-      corners.reduce((sum, c) => sum.addInPlace(c), B.Vector3.Zero())
+      neighbors.reduce((sum, c) => sum.addInPlace(c), B.Vector3.Zero())
       .normalize();
     center.material = mat;
   }
