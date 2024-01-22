@@ -148,9 +148,9 @@ export const balanced = (n: number) => {
 }
 
 export const triangulationFns: Record<string, (n: number) => Triangulation> = {
-  flat, collapsed,
-  geodesics, parallels, evenGeodesics,
-  sines, sineBased, sineBased2, asinBased, balanced,
+  flat, sines, collapsed,
+  geodesics, evenGeodesics, parallels,
+  sineBased, sineBased2, asinBased, balanced,
 }
 
 export const rays = (n: number, tr: Triangulation): Vector3[][] =>
