@@ -650,8 +650,8 @@ const hexagon = new Hexagon(asinBased);
 
 const demoExpl = new Explanation(`
   See
-  <a href="https://github.com/hcschuetz/octasphere/presentation/README.md"
-  >https://github.com/hcschuetz/octasphere/presentation/README.md</a>
+  <a href="https://github.com/hcschuetz/octasphere/tree/main/presentation/README.md"
+  >https://github.com/hcschuetz/octasphere/tree/main/presentation/README.md</a>
   for some hints.
 `);
 demoExpl.alpha = 1;
@@ -704,8 +704,8 @@ const linksExpl = new Explanation(`
   This application: <a href="https://hcschuetz.github.io/octasphere/dist/presentation/"
   >https://hcschuetz.github.io/octasphere/dist/presentation/</a>
   <br>
-  Code and documentation: <a href="https://github.com/hcschuetz/octasphere/presentation/"
-  >https://github.com/hcschuetz/octasphere/presentation/</a>
+  Code and documentation: <a href="https://github.com/hcschuetz/octasphere/tree/main/presentation/"
+  >https://github.com/hcschuetz/octasphere/tree/main/presentation/</a>
 `);
 
 const cyanMesh    = new TriangulationWithAuxLines(flatLines, flat, cyan   , 0);
