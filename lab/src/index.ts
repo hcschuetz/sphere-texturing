@@ -288,7 +288,6 @@ M.autorun(() => {
   const n = nSteps.get();
   const fn = triangFn.get();
   const adjCyl = adjacentShape.get() === "cylinder";
-  console.log(n, fn, adjCyl ? "cyl" : "sph");
   const t = T.triangulationFns[fn](n);
   let sum0 = 0, sum1 = 0, sum2 = 0;
   let min = 2 /* diameter of unit sphere */, max = 0;
@@ -338,11 +337,13 @@ M.autorun(() => {
   const stdDevInPercent = stdDev/mean*100;
 
   dihedrals.sort(({bend: alpha}, {bend: beta}) => beta - alpha);
-  console.log(dihedrals.map(({bend, i, j, i_, j_}, rank) =>
-    (rank === 0 || bend < dihedrals[rank-1].bend - 1e-7 ? "* " : "  ") +
-    `${(bend/TAU*360).toFixed(4)}° @` +
-    ` ${i}:${j}:${n-i-j} - ${i_}:${j_}:${n-i_-j_}`
-  ));
+  console.log(n, fn, adjacentShape.get(),
+    dihedrals.map(({bend, i, j, i_, j_}, rank) =>
+      (rank === 0 || bend < dihedrals[rank-1].bend - 1e-7 ? "* " : "  ") +
+      `${(bend/TAU*360).toFixed(4)}° @` +
+      ` ${i}:${j}:${n-i-j} - ${i_}:${j_}:${n-i_-j_}`
+    ),
+  );
 
   const maxBend = dihedrals[0].bend;
   mostBentEdges.forEach(e => e.dispose());
