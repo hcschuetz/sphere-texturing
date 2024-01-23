@@ -1,8 +1,8 @@
 import * as B from "@babylonjs/core";
 import * as G from "@babylonjs/gui";
 import * as M from "mobx";
-import * as T from "../../lib/triangulation";
-import { MotionController, easeInOut, map2, radToDeg, slerp, subdivide, zip } from "../../lib/utils";
+import * as T from "../lib/triangulation";
+import { MotionController, easeInOut, map2, radToDeg, slerp, subdivide, zip } from "../lib/utils";
 import RoundedBox from "./RoundedBox";
 // import { log } from "./debug";
 

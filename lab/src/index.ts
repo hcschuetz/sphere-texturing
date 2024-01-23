@@ -1,8 +1,8 @@
 import * as B from "@babylonjs/core";
 import * as G from "@babylonjs/gui";
 import * as M from "mobx";
-import * as T from "../../lib/triangulation";
-import { easeInOut, map2, radToDeg, slerp, subdivide, zip } from "../../lib/utils";
+import * as T from "../lib/triangulation";
+import { radToDeg, slerp, subdivide } from "../lib/utils";
 // import { log } from "./debug";
 
 M.configure({
@@ -340,7 +340,7 @@ M.autorun(() => {
   console.log(n, fn, adjacentShape.get(),
     dihedrals.map(({bend, i, j, i_, j_}, rank) =>
       (rank === 0 || bend < dihedrals[rank-1].bend - 1e-7 ? "* " : "  ") +
-      `${(bend/TAU*360).toFixed(4)}° @` +
+      `${radToDeg(bend).toFixed(4)}° @` +
       ` ${i}:${j}:${n-i-j} - ${i_}:${j_}:${n-i_-j_}`
     ),
   );
@@ -374,7 +374,7 @@ M.autorun(() => {
   show("#min", min.toFixed(5));
   show("#max", max.toFixed(5));
   show("#ratio", (max/min).toFixed(5));
-  show("#maxBend", (maxBend/TAU*360).toFixed(4) + "°")
+  show("#maxBend", radToDeg(maxBend).toFixed(4) + "°")
 });
 
 
