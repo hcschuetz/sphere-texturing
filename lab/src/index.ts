@@ -298,14 +298,18 @@ M.autorun(() => {
   const stdDev = Math.sqrt(sum2/sum0 - (sum1/sum0)**2);
   const stdDevInPercent = stdDev/mean*100;
 
-  document.querySelector("#nStepsOut")!.innerHTML = nSteps.get().toFixed();
-  document.querySelector("#nEdges")!.innerHTML = sum0.toFixed();
-  document.querySelector("#mean")!.innerHTML = mean.toFixed(5);
-  document.querySelector("#stdDev")!.innerHTML = stdDev.toFixed(5);
-  document.querySelector("#stdDevInPercent")!.innerHTML = stdDevInPercent.toFixed(3);
-  document.querySelector("#min")!.innerHTML = min.toFixed(5);
-  document.querySelector("#max")!.innerHTML = max.toFixed(5);
-  document.querySelector("#ratio")!.innerHTML = (max/min).toFixed(5);
+  function show(where: string, what: string) {
+    document.querySelector(where)!.innerHTML = what;
+  }
+
+  show("#nStepsOut", nSteps.get().toFixed());
+  show("#nEdges", sum0.toFixed());
+  show("#mean", mean.toFixed(5));
+  show("#stdDev", stdDev.toFixed(5));
+  show("#stdDevInPercent", stdDevInPercent.toFixed(3));
+  show("#min", min.toFixed(5));
+  show("#max", max.toFixed(5));
+  show("#ratio", (max/min).toFixed(5));
 });
 
 
