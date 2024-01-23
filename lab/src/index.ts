@@ -109,14 +109,6 @@ arc("arc1", v3(1, 0, 0), v3(0, 1, 0), arcMaterial);
 arc("arc2", v3(0, 1, 0), v3(0, 0, 1), arcMaterial);
 arc("arc3", v3(0, 0, 1), v3(1, 0, 0), arcMaterial);
 
-const arcMaterial2 =
-  createStandardMaterial("arcMat2", {diffuseColor: gray, alpha: 0}, scene);
-
-arc("arc4", v3(1, 0, 0), v3(0, Math.SQRT1_2, Math.SQRT1_2), arcMaterial2);
-arc("arc5", v3(0, 1, 0), v3(Math.SQRT1_2, 0, Math.SQRT1_2), arcMaterial2);
-arc("arc6", v3(0, 0, 1), v3(Math.SQRT1_2, Math.SQRT1_2, 0), arcMaterial2);
-
-
 
 
 export default class EighthSphereTriangulation extends B.Mesh {
@@ -228,6 +220,13 @@ triangFnElem.addEventListener("change", () => {
   triangFn.set(triangFnElem.value);
 });
 
+const adjacentShape = M.observable.box("sphere");
+const adjacentShapeElem = document.querySelector("#adjacentShape") as HTMLSelectElement;
+adjacentShapeElem.value = adjacentShape.get();
+adjacentShapeElem.addEventListener("change", () => {
+  adjacentShape.set(adjacentShapeElem.value);
+});
+
 const displayMode = M.observable.box("wireframe");
 const displayModeElem = document.querySelector("#displayMode") as HTMLSelectElement;
 displayModeElem.value = displayMode.get();
@@ -242,14 +241,6 @@ colorElem.addEventListener("change", () => {
   color.set(colorElem.value);
 });
 
-/*
-### more parameters:
-- color
-- coordinates on/off
-- full sphere vs. eighth
-
-### How to display edge lengths as colors?
-*/
 
 let estMaterial = createStandardMaterial("mat", {}, scene);
 M.autorun(() => {
@@ -273,30 +264,100 @@ M.autorun(() => {
 
 const forwardNeighborOffsets = [[1, -1], [1, 0], [0, 1]];
 
+/**
+ * Dihedral "bend" between triangles `p0 p1 p2` and `p0 p2 p3`,
+ * that is, the supplementary angle to the dihedral angle.
+ */
+function dihedralBend(p0: V3, p1: V3, p2: V3, p3: V3) {
+  const u01 = p1.subtract(p0);
+  const u02 = p2.subtract(p0);
+  const u03 = p3.subtract(p0);
+  const n012 = u01.cross(u02).normalize();
+  const n023 = u02.cross(u03).normalize();
+  return Math.acos(n012.dot(n023));
+}
+
+type DihedralInfo = {bend: number, i: number, j: number, i_: number, j_: number};
+
+let mostBentEdges: B.Mesh[] = [];
+const mostBentEdgeMat = createStandardMaterial("mbeMat", {
+  diffuseColor: B.Color3.Yellow(),
+}, scene);
+
 M.autorun(() => {
   const n = nSteps.get();
-  const t = T.triangulationFns[triangFn.get()](n);
+  const fn = triangFn.get();
+  const adjCyl = adjacentShape.get() === "cylinder";
+  console.log(n, fn, adjCyl ? "cyl" : "sph");
+  const t = T.triangulationFns[fn](n);
   let sum0 = 0, sum1 = 0, sum2 = 0;
-  let min = Number.POSITIVE_INFINITY, max = 0, maxPos = "";
+  let min = 2 /* diameter of unit sphere */, max = 0;
+  const dihedrals: DihedralInfo[] = [];
+
   t.forEach((row, i) => {
     row.forEach((vtx, j) => {
       const k = n - i - j;
       forwardNeighborOffsets.forEach(([di, dj]) => {
         const i_ = i + di, j_ = j + dj, k_ = n - i_ - j_;
         if (i_ >= 0 && j_ >= 0 && k_ >= 0) {
-          const d = B.Vector3.Distance(vtx, t[i_][j_]);
+          const v_ = t[i_][j_];
+          const u_ = v_.subtract(vtx);
+          const d = u_.length();
           sum0++;
           sum1 += d;
           sum2 += d * d;
           min = Math.min(min, d);
           max = Math.max(max, d);
+
+          {
+            let va: V3, vb: V3;
+            const ia = i + di + dj, ja = j - di     ;
+            const ib = i      - dj, jb = j + di + dj;
+            if (ib < 0) {
+              va = t[1][j];
+              vb = adjCyl ? v3(vtx.x, -1, vtx.z) : v3(va.x, -va.y, va.z);
+            } else if (ja < 0) {
+              vb = t[i][1];
+              va = adjCyl ? v3(vtx.x, vtx.y, -1) : v3(vb.x, vb.y, -vb.z);
+            } else if (ib + jb > n) {
+              vb = t[i][j-1];
+              va = adjCyl ? v3(-1, vtx.y, vtx.z) : v3(-vb.x, vb.y, vb.z);
+            } else {
+              va = t[ia][ja];
+              vb = t[ib][jb];
+            }
+            dihedrals.push({bend: dihedralBend(vtx, va, v_, vb), i, j, i_, j_});
+          }
         }
       });
     });
   });
+
   const mean = sum1/sum0;
   const stdDev = Math.sqrt(sum2/sum0 - (sum1/sum0)**2);
   const stdDevInPercent = stdDev/mean*100;
+
+  dihedrals.sort(({bend: alpha}, {bend: beta}) => beta - alpha);
+  console.log(dihedrals.map(({bend, i, j, i_, j_}, rank) =>
+    (rank === 0 || bend < dihedrals[rank-1].bend - 1e-7 ? "* " : "  ") +
+    `${(bend/TAU*360).toFixed(4)}° @` +
+    ` ${i}:${j}:${n-i-j} - ${i_}:${j_}:${n-i_-j_}`
+  ));
+
+  const maxBend = dihedrals[0].bend;
+  mostBentEdges.forEach(e => e.dispose());
+  mostBentEdges =
+    dihedrals.filter(({bend}) => maxBend - bend < 1e-7)
+    .map(({i, j, i_, j_}) => {
+      const e = B.MeshBuilder.CreateTube("mostBentEdge", {
+        path: [t[i][j], t[i_][j_]],
+        tessellation: 6,
+        radius: 0.005,
+        cap: B.Mesh.CAP_ALL,
+      }, scene);
+      e.material = mostBentEdgeMat;
+      return e;
+    });
 
   function show(where: string, what: string) {
     document.querySelector(where)!.innerHTML = what;
@@ -310,6 +371,7 @@ M.autorun(() => {
   show("#min", min.toFixed(5));
   show("#max", max.toFixed(5));
   show("#ratio", (max/min).toFixed(5));
+  show("#maxBend", (maxBend/TAU*360).toFixed(4) + "°")
 });
 
 
