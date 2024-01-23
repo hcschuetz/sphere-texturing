@@ -26,8 +26,8 @@ Hints:
   "`asinBased`",
   "`balanced`".
 
-So https://hcschuetz.github.io/octasphere/dist/presentation/?start=60&n=10&rbt=sineBased
-displays step 60 with subdivision granularity 10 and triangulation function `sineBased`.
+So https://hcschuetz.github.io/octasphere/dist/presentation/?start=2&n=10&rbt=sineBased
+displays step 2 with subdivision granularity 10 and triangulation function `sineBased`.
 
 
 Notes on the Triangulation of an Octasphere
