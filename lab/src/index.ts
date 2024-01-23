@@ -271,61 +271,44 @@ M.autorun(() => {
 })
 
 
+const forwardNeighborOffsets = [[1, -1], [1, 0], [0, 1]];
 
-
-
-
-function logStats(n: number) {
-  console.log(`
-    |   #    avg     std    std     min     max   max/min where
-    | edges  len     dev   dev %    len     len    ratio
-  `.trim().replaceAll(/^\s*\|/mg, "              "));
-  const forwardNeighborOffsets = [[1, -1], [1, 0], [0, 1]];
-  Object.entries(T.triangulationFns).forEach(([name, fn]) => {
-    const t = fn(n);
-    let sum0 = 0, sum1 = 0, sum2 = 0;
-    let min = Number.POSITIVE_INFINITY, max = 0, maxPos = "";
-    t.forEach((row, i) => {
-      row.forEach((vtx, j) => {
-        const k = n - i - j;
-        forwardNeighborOffsets.forEach(([di, dj]) => {
-          const i_ = i + di, j_ = j + dj, k_ = n - i_ - j_;
-          if (i_ >= 0 && j_ >= 0 && k_ >= 0) {
-            const d = B.Vector3.Distance(vtx, t[i_][j_]);
-            sum0++;
-            sum1 += d;
-            sum2 += d * d;
-            min = Math.min(min, d);
-            if (d > max) {
-              max = d;
-              maxPos = `${i}:${j}:${k} ${i_}:${j_}:${k_}`;
-            }
-          }
-        });
+M.autorun(() => {
+  const n = nSteps.get();
+  const t = T.triangulationFns[triangFn.get()](n);
+  let sum0 = 0, sum1 = 0, sum2 = 0;
+  let min = Number.POSITIVE_INFINITY, max = 0, maxPos = "";
+  t.forEach((row, i) => {
+    row.forEach((vtx, j) => {
+      const k = n - i - j;
+      forwardNeighborOffsets.forEach(([di, dj]) => {
+        const i_ = i + di, j_ = j + dj, k_ = n - i_ - j_;
+        if (i_ >= 0 && j_ >= 0 && k_ >= 0) {
+          const d = B.Vector3.Distance(vtx, t[i_][j_]);
+          sum0++;
+          sum1 += d;
+          sum2 += d * d;
+          min = Math.min(min, d);
+          max = Math.max(max, d);
+        }
       });
     });
-    const mean = sum1/sum0;
-    const stdDev = Math.sqrt(sum2/sum0 - (sum1/sum0)**2);
-    const stdDevInPercent = stdDev/mean*100;
-    console.log(
-      name.padEnd(15),
-      sum0.toFixed().padStart(3),
-      mean.toFixed(5),
-      stdDev.toFixed(5),
-      stdDevInPercent.toFixed(3),
-      min.toFixed(5),
-      max.toFixed(5),
-      (max/min).toFixed(5),
-      maxPos,
-    );
   });
-}
+  const mean = sum1/sum0;
+  const stdDev = Math.sqrt(sum2/sum0 - (sum1/sum0)**2);
+  const stdDevInPercent = stdDev/mean*100;
 
-// logStats(n);
-
+  document.querySelector("#nStepsOut")!.innerHTML = nSteps.get().toFixed();
+  document.querySelector("#nEdges")!.innerHTML = sum0.toFixed();
+  document.querySelector("#mean")!.innerHTML = mean.toFixed(5);
+  document.querySelector("#stdDev")!.innerHTML = stdDev.toFixed(5);
+  document.querySelector("#stdDevInPercent")!.innerHTML = stdDevInPercent.toFixed(3);
+  document.querySelector("#min")!.innerHTML = min.toFixed(5);
+  document.querySelector("#max")!.innerHTML = max.toFixed(5);
+  document.querySelector("#ratio")!.innerHTML = (max/min).toFixed(5);
+});
 
 
 engine.runRenderLoop(() => scene.render());
 
 window.addEventListener('resize', () => engine.resize());
-  
