@@ -359,6 +359,8 @@ M.autorun(() => {
       return e;
     });
 
+  // TODO Also analyze bends between pairs of triangles sharing only one vertex?
+
   function show(where: string, what: string) {
     document.querySelector(where)!.innerHTML = what;
   }
