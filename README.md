@@ -1,24 +1,3 @@
-Notes on the Demo
-=================
-
-[The demo](https://hcschuetz.github.io/octasphere/dist/) illustrates the
-octasphere-related considerations below.
-
-Hints:
-- Click the step button to proceed and use the slider to set your preferred
-  animation speed.
-- Drag the sphere to turn it around so that you can see things from different
-  angles.
-- Add a query parameter "`start`" to the URL if you want to start at
-  a particular step.
-- Add a query parameter "`n`" to the URL to set the subdivision
-  granularity.  The default value is 6 and some parts of the demo
-  were actually written with that value in mind.
-
-So https://hcschuetz.github.io/octasphere/dist/?start=60&n=10 displays
-step 60 with subdivision granularity 10.
-
-
 Triangulations of the Octasphere
 ================================
 
