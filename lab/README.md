@@ -1,7 +1,7 @@
 The "Octasphere Lab"
 ====================
 
-The web application https://hcschuetz.github.io/octasphere/dist/lab/
+The web application https://hcschuetz.github.io/octasphere/lab/dist/
 is a tool to investigate properties of various triangulations
 of an "eighth of a sphere", that is, of the spherical triangle corresponding
 to one face of an inscribed octahedron.

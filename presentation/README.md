@@ -1,7 +1,7 @@
 Notes on the Demo
 =================
 
-[The demo](https://hcschuetz.github.io/octasphere/dist/presentation/) illustrates the
+[The demo](https://hcschuetz.github.io/octasphere/presentation/dist/) illustrates the
 octasphere-related considerations below.
 
 Hints:
@@ -26,7 +26,7 @@ Hints:
   "`asinBased`",
   "`balanced`".
 
-So https://hcschuetz.github.io/octasphere/dist/presentation/?start=2&n=10&rbt=sineBased
+So https://hcschuetz.github.io/octasphere/presentation/dist/?start=2&n=10&rbt=sineBased
 displays step 2 with subdivision granularity 10 and triangulation function `sineBased`.
 
 

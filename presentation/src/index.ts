@@ -701,8 +701,8 @@ const overviewExpl = new Explanation(`
   <div style="color: #0f0;"   >balanced</div>
 `);
 const linksExpl = new Explanation(`
-  This application: <a href="https://hcschuetz.github.io/octasphere/dist/presentation/"
-  >https://hcschuetz.github.io/octasphere/dist/presentation/</a>
+  This application: <a href="https://hcschuetz.github.io/octasphere/presentation/dist/"
+  >https://hcschuetz.github.io/octasphere/presentation/dist/</a>
   <br>
   Code and documentation: <a href="https://github.com/hcschuetz/octasphere/tree/main/presentation/"
   >https://github.com/hcschuetz/octasphere/tree/main/presentation/</a>
