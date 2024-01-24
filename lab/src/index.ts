@@ -336,7 +336,7 @@ M.autorun(() => {
   const stdDev = Math.sqrt(sum2/sum0 - (sum1/sum0)**2);
   const stdDevInPercent = stdDev/mean*100;
 
-  dihedrals.sort(({bend: alpha}, {bend: beta}) => beta - alpha);
+  dihedrals.sort(({bend: bend1}, {bend: bend2}) => bend2 - bend1);
   console.log(n, fn, adjacentShape.get(),
     dihedrals.map(({bend, i, j, i_, j_}, rank) =>
       (rank === 0 || bend < dihedrals[rank-1].bend - 1e-7 ? "* " : "  ") +
