@@ -1,6 +1,5 @@
 import * as B from "@babylonjs/core";
-import * as T from "./triangulation";
-import { map2 } from "./utils";
+import * as T from "../lib/triangulation";
 
 // TODO Support single-value dimensions.
 // In that case do not create the corresponding faces and edges.
