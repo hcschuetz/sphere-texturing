@@ -93,31 +93,21 @@ origin.material =
   createStandardMaterial("originMat", {diffuseColor: black}, scene);
 
 
-const arc = (name: string, from: B.Vector3, to: B.Vector3, mat: B.Material): B.Mesh => {
-  const a = B.MeshBuilder.CreateTube(name, {
-    path: subdivide(0, 1, 40).map(lambda => slerp(from, to, lambda)),
-    radius: 0.003,
-    tessellation: 6,
-  }, scene);
-  a.material = mat;
-  return a;
-}
-
-const arcMaterial = createStandardMaterial("arcMat", {diffuseColor: gray}, scene);
-
-arc("arc1", v3(1, 0, 0), v3(0, 1, 0), arcMaterial);
-arc("arc2", v3(0, 1, 0), v3(0, 0, 1), arcMaterial);
-arc("arc3", v3(0, 0, 1), v3(1, 0, 0), arcMaterial);
+const adjacentMaterial = createStandardMaterial("adjMat", {
+  diffuseColor: gray,
+  alpha: 0.5,
+  wireframe: true,
+}, scene);
 
 
-
-export default class EighthSphereTriangulation extends B.Mesh {
+class EighthSphereTriangulation extends B.Mesh {
   constructor(
     name: string,
     options: {
       steps?: number,
       triangulationFn: (steps: number) => T.Triangulation,
       smooth: boolean,
+      adjShape: AdjacentShape;
     },
     scene?: B.Scene
   ) {
@@ -127,6 +117,7 @@ export default class EighthSphereTriangulation extends B.Mesh {
       steps = 6,
       triangulationFn,
       smooth,
+      adjShape,
     } = options;
 
     // ========== VERTEX UTILS ==========
@@ -201,6 +192,77 @@ export default class EighthSphereTriangulation extends B.Mesh {
     }
     vertexData.indices = indices;
     vertexData.applyToMesh(this);
+
+    // ========== ADJACENT TRIANGLES ==========
+
+    const renderAdjacent = (vtxFn: {
+      border: (idx: number) => V3,
+      sphere: (idx: number) => V3,
+      cylinder: (idx: number) => V3,
+    }) => {
+      const positions = new Float32Array((2 * steps + 1) * 3);
+      const normals = new Float32Array((2 * steps + 1) * 3);
+      const indices = new Uint32Array(steps * 3);
+      for (let j = 0; j <= steps; j++) {
+        const v = vtxFn.border(j);
+        normals[2*j*3 + 0] = positions[2*j*3 + 0] = v.x;
+        normals[2*j*3 + 1] = positions[2*j*3 + 1] = v.y;
+        normals[2*j*3 + 2] = positions[2*j*3 + 2] = v.z;
+        if (j > 0) {
+          const outer = vtxFn[adjShape](j-1);
+          normals[(2*j - 1)*3 + 0] = positions[(2*j - 1)*3 + 0] = outer.x;
+          normals[(2*j - 1)*3 + 1] = positions[(2*j - 1)*3 + 1] = outer.y;
+          normals[(2*j - 1)*3 + 2] = positions[(2*j - 1)*3 + 2] = outer.z;
+    
+          indices[(j-1)*3 + 0] = 2*(j-1);
+          indices[(j-1)*3 + 1] = 2*j;
+          indices[(j-1)*3 + 2] = 2*j-1;
+        }
+      };
+
+      const vertexData = new B.VertexData();
+      vertexData.positions = positions;
+      vertexData.normals = normals;
+      vertexData.indices = indices;
+      const mesh = new B.Mesh(name + "Adj", scene);
+      vertexData.applyToMesh(mesh);
+      mesh.material = adjacentMaterial;
+      mesh.parent = this;
+    }
+
+    renderAdjacent({
+      border: (idx: number) => cornerVertices[0][idx],
+      sphere: (idx: number) => {
+        const inner = cornerVertices[1][idx];
+        return v3(inner.x, -inner.y, inner.z);
+      },
+      cylinder: (idx: number) => {
+        const vtx = cornerVertices[0][idx];
+        return v3(vtx.x, -1, vtx.z);
+      },
+    });
+    renderAdjacent({
+      border: (idx: number) => cornerVertices[idx][0],
+      sphere: (idx: number) => {
+        const inner = cornerVertices[idx][1];
+        return v3(inner.x, inner.y, -inner.z);
+      },
+      cylinder: (idx: number) => {
+        const vtx = cornerVertices[idx][0];
+        return v3(vtx.x, vtx.y, -1);
+      },
+    });
+    renderAdjacent({
+      border: (idx: number) => cornerVertices[idx][steps-idx],
+      sphere: (idx: number) => {
+          const inner = cornerVertices[idx][steps-idx-1];
+          return v3(-inner.x, inner.y, inner.z);
+      },
+      cylinder: (idx: number) => {
+        const vtx = cornerVertices[idx][steps-idx];
+        return v3(-1, vtx.y, vtx.z);
+      },
+    });
   }
 }
 
@@ -220,11 +282,12 @@ triangFnElem.addEventListener("change", () => {
   triangFn.set(triangFnElem.value);
 });
 
-const adjacentShape = M.observable.box("sphere");
+type AdjacentShape = "sphere" | "cylinder";
+const adjacentShape = M.observable.box<AdjacentShape>("sphere");
 const adjacentShapeElem = document.querySelector("#adjacentShape") as HTMLSelectElement;
 adjacentShapeElem.value = adjacentShape.get();
 adjacentShapeElem.addEventListener("change", () => {
-  adjacentShape.set(adjacentShapeElem.value);
+  adjacentShape.set(adjacentShapeElem.value as AdjacentShape);
 });
 
 const displayMode = M.observable.box("wireframe");
@@ -257,6 +320,7 @@ M.autorun(() => {
     triangulationFn: T.triangulationFns[triangFn.get()],
     steps: nSteps.get(),
     smooth: M.computed(() => displayMode.get() !== "polyhedron").get(),
+    adjShape: adjacentShape.get(),
   }, scene);
   est.material = estMaterial;
 })
