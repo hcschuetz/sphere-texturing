@@ -433,6 +433,88 @@ M.autorun(() => {
   show("#maxBend", radToDeg(maxBend).toFixed(4) + "°")
 });
 
+// Easter Egg
+if (true) {
+  const mat = new B.MultiMaterial("easterEggMat", scene);
+  ["#ffffff", "#bb0000", "#3380ff"].forEach(color =>
+    mat.subMaterials.push(
+      createStandardMaterial("easterEgg" + color, {
+        diffuseColor: B.Color3.FromHexString(color),
+      }, scene),
+    ),
+  );
+
+  const matIndices: Record<string, number[]> = {
+    "#ff0000": [
+      1,1,1,1,1,1,1,1,1,
+        1,0,1,0,1,0,1,
+          0,0,0,0,0,
+            0,0,0,
+              0,
+    ],
+    "#0000ff": [
+      0,0,2,2,0,0,2,2,0,
+        2,2,0,0,2,2,0,
+          0,0,2,2,0,
+            2,2,0,
+              0,
+    ],
+  };
+
+  let mesh: B.Mesh | undefined;
+
+  M.autorun(() => {
+    mesh?.dispose();
+
+    const mats = matIndices[color.get()];
+    const dispMode = displayMode.get();
+    if (
+      mats &&
+      nSteps.get() === 5 &&
+      adjacentShape.get() === "cylinder" &&
+      (dispMode === "polyhedron" || dispMode === "smooth")
+    ) {
+      let triangulation = T.triangulationFns[triangFn.get()](5);
+      const positions = new Float32Array(21 * 3);
+      const indices = new Uint32Array(25 * 3);
+      let idx = 0, ii = 0;
+      triangulation.forEach((row, i) => {
+        row.forEach((vtx, j) => {
+          positions[3*idx + 0] = vtx.x;
+          positions[3*idx + 1] = vtx.y;
+          positions[3*idx + 2] = vtx.z;
+          if (i > 0) {
+            if (j > 0) {
+              indices[ii++] = idx;
+              indices[ii++] = idx - 1;
+              indices[ii++] = idx - 7 + i;
+            }
+            indices[ii++] = idx;
+            indices[ii++] = idx - 7 + i;
+            indices[ii++] = idx - 6 + i;
+          }
+          idx++;
+        });
+      });
+
+      mesh = new B.Mesh("easterEgg", scene);
+      Object.assign(new B.VertexData(), {
+        positions,
+        normals: dispMode === "smooth" ? positions : undefined,
+        indices,
+      }).applyToMesh(mesh);
+
+      mesh.material = mat;
+      mesh.subMeshes = [];
+      mats.forEach((mat, idx) => {
+        new B.SubMesh(mat, 0, positions.length, idx*3, 3, mesh!);
+      });
+
+      mesh.scaling = v3(1,-1, 1);
+      mesh.position = v3(0,-1,0);
+    }
+  });
+}
 
 engine.runRenderLoop(() => scene.render());
 
