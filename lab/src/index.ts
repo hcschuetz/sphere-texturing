@@ -131,22 +131,16 @@ class EighthSphereTriangulation extends B.Mesh {
       // Subtract `i * (i - 1) / 2` to correct for the decreasing row lengths.
       // Then simplify the formula:
       i * (2 * steps + 3 - i) / 2;
-    const verticesPerCorner = rowVertices(steps + 1);
-    const nCoords = 8 * verticesPerCorner * 3;
-    const positions = new Float32Array(nCoords);
-    const normals = new Float32Array(nCoords);
+    const normals = new Float32Array(rowVertices(steps + 1) * 3);
 
     /** Compute a vertex index from the "logical" vertex position */
     const vtx = (i: number, j: number): number =>
-      verticesPerCorner + rowVertices(i) + j;
+      rowVertices(i) + j;
 
-    function setVertexData(
-      idx: number, position: B.Vector3, normal: B.Vector3,
-    ): void {
-      let idx3 = 3 * idx;
-      positions[idx3] = position.x; normals[idx3] = normal.x; idx3++;
-      positions[idx3] = position.y; normals[idx3] = normal.y; idx3++;
-      positions[idx3] = position.z; normals[idx3] = normal.z;
+    function setVertexData(idx: number, normal: B.Vector3): void {
+      normals[idx*3 + 0] = normal.x;
+      normals[idx*3 + 1] = normal.y;
+      normals[idx*3 + 2] = normal.z;
     }
 
     // ========== TRIANGLE UTILS ==========
@@ -172,11 +166,7 @@ class EighthSphereTriangulation extends B.Mesh {
     cornerVertices.forEach((row, i) => {
       /** Is it time to draw edges and faces parallel to the y axis? */
       row.forEach((v, j) => {
-
-        // no loop for k as it is fully determined by i and j:
-        const k = steps - i - j;
-
-        setVertexData(vtx(i, j), v, v);
+        setVertexData(vtx(i, j), v);
 
         if (i > 0)          triangle((u, v) => vtx(i-1+u, j+v));
         if (i > 0 && j > 0) triangle((u, v) => vtx(i-u  , j-v));
@@ -186,7 +176,7 @@ class EighthSphereTriangulation extends B.Mesh {
     // ========== BUILD THE MESH ==========
 
     const vertexData = new B.VertexData();
-    vertexData.positions = positions;
+    vertexData.positions = normals; // works since we are on the unit sphere
     if (smooth) {
       vertexData.normals = normals;
     }
