@@ -238,7 +238,7 @@ class EighthSphereTriangulation extends B.Mesh {
         return v3(inner.x, inner.y, -inner.z);
       },
       cylinder: (idx: number) => {
-        const vtx = cornerVertices[idx][0];
+        const vtx = cornerVertices[idx+1][0];
         return v3(vtx.x, vtx.y, -1);
       },
     });
