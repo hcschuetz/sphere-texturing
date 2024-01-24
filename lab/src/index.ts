@@ -266,7 +266,9 @@ nStepsElem.addEventListener("change", () => {
 const triangFn = M.observable.box("geodesics");
 const triangFnElem = document.querySelector("#triangFn") as HTMLSelectElement;
 triangFnElem.innerHTML =
-  Object.keys(T.triangulationFns).map(name => `<option>${name}</option>`).join("\n");
+  Object.keys(T.triangulationFns)
+  .filter(name => name !== "collapsed")
+  .map(name => `<option>${name}</option>`).join("\n");
 triangFnElem.value = triangFn.get();
 triangFnElem.addEventListener("change", () => {
   triangFn.set(triangFnElem.value);
