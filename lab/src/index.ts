@@ -159,11 +159,11 @@ class EighthSphereTriangulation extends B.Mesh {
 
     // ========== CREATE VERTICES AND TRIANGLES ==========
 
-    const cornerVertices = triangulationFn(steps);
+    const triangulation = triangulationFn(steps);
 
     // In our triangulations i grows in the y direction, j in the z
     // direction and k in the x direction.
-    cornerVertices.forEach((row, i) => {
+    triangulation.forEach((row, i) => {
       /** Is it time to draw edges and faces parallel to the y axis? */
       row.forEach((v, j) => {
         setVertexData(vtx(i, j), v);
@@ -221,35 +221,35 @@ class EighthSphereTriangulation extends B.Mesh {
     }
 
     renderAdjacent({
-      border: (idx: number) => cornerVertices[0][idx],
+      border: (idx: number) => triangulation[0][idx],
       sphere: (idx: number) => {
-        const inner = cornerVertices[1][idx];
+        const inner = triangulation[1][idx];
         return v3(inner.x, -inner.y, inner.z);
       },
       cylinder: (idx: number) => {
-        const vtx = cornerVertices[0][idx];
+        const vtx = triangulation[0][idx];
         return v3(vtx.x, -1, vtx.z);
       },
     });
     renderAdjacent({
-      border: (idx: number) => cornerVertices[idx][0],
+      border: (idx: number) => triangulation[idx][0],
       sphere: (idx: number) => {
-        const inner = cornerVertices[idx][1];
+        const inner = triangulation[idx][1];
         return v3(inner.x, inner.y, -inner.z);
       },
       cylinder: (idx: number) => {
-        const vtx = cornerVertices[idx+1][0];
+        const vtx = triangulation[idx+1][0];
         return v3(vtx.x, vtx.y, -1);
       },
     });
     renderAdjacent({
-      border: (idx: number) => cornerVertices[idx][steps-idx],
+      border: (idx: number) => triangulation[idx][steps-idx],
       sphere: (idx: number) => {
-          const inner = cornerVertices[idx][steps-idx-1];
+          const inner = triangulation[idx][steps-idx-1];
           return v3(-inner.x, inner.y, inner.z);
       },
       cylinder: (idx: number) => {
-        const vtx = cornerVertices[idx][steps-idx];
+        const vtx = triangulation[idx][steps-idx];
         return v3(-1, vtx.y, vtx.z);
       },
     });
@@ -344,18 +344,18 @@ M.autorun(() => {
   const n = nSteps.get();
   const fn = triangFn.get();
   const adjCyl = adjacentShape.get() === "cylinder";
-  const t = T.triangulationFns[fn](n);
+  const triangulation = T.triangulationFns[fn](n);
   let sum0 = 0, sum1 = 0, sum2 = 0;
   let min = 2 /* diameter of unit sphere */, max = 0;
   const dihedrals: DihedralInfo[] = [];
 
-  t.forEach((row, i) => {
+  triangulation.forEach((row, i) => {
     row.forEach((vtx, j) => {
       const k = n - i - j;
       forwardNeighborOffsets.forEach(([di, dj]) => {
         const i_ = i + di, j_ = j + dj, k_ = n - i_ - j_;
         if (i_ >= 0 && j_ >= 0 && k_ >= 0) {
-          const v_ = t[i_][j_];
+          const v_ = triangulation[i_][j_];
           const u_ = v_.subtract(vtx);
           const d = u_.length();
           sum0++;
@@ -369,17 +369,17 @@ M.autorun(() => {
             const ia = i + di + dj, ja = j - di     ;
             const ib = i      - dj, jb = j + di + dj;
             if (ib < 0) {
-              va = t[1][j];
+              va = triangulation[1][j];
               vb = adjCyl ? v3(vtx.x, -1, vtx.z) : v3(va.x, -va.y, va.z);
             } else if (ja < 0) {
-              vb = t[i][1];
+              vb = triangulation[i][1];
               va = adjCyl ? v3(vtx.x, vtx.y, -1) : v3(vb.x, vb.y, -vb.z);
             } else if (ib + jb > n) {
-              vb = t[i][j-1];
+              vb = triangulation[i][j-1];
               va = adjCyl ? v3(-1, vtx.y, vtx.z) : v3(-vb.x, vb.y, vb.z);
             } else {
-              va = t[ia][ja];
-              vb = t[ib][jb];
+              va = triangulation[ia][ja];
+              vb = triangulation[ib][jb];
             }
             dihedrals.push({bend: dihedralBend(vtx, va, v_, vb), i, j, i_, j_});
           }
@@ -407,7 +407,7 @@ M.autorun(() => {
     dihedrals.filter(({bend}) => maxBend - bend < 1e-7)
     .map(({i, j, i_, j_}) => {
       const e = B.MeshBuilder.CreateTube("mostBentEdge", {
-        path: [t[i][j], t[i_][j_]],
+        path: [triangulation[i][j], triangulation[i_][j_]],
         tessellation: 6,
         radius: 0.005,
         cap: B.Mesh.CAP_ALL,
