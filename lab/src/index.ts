@@ -2,7 +2,8 @@ import * as B from "@babylonjs/core";
 import * as G from "@babylonjs/gui";
 import * as M from "mobx";
 import * as T from "../lib/triangulation";
-import { radToDeg, slerp, subdivide } from "../lib/utils";
+import { radToDeg } from "../lib/utils";
+import CheckeredTexture from "./CheckeredTexture";
 // import { log } from "./debug";
 
 M.configure({
@@ -131,16 +132,20 @@ class EighthSphereTriangulation extends B.Mesh {
       // Subtract `i * (i - 1) / 2` to correct for the decreasing row lengths.
       // Then simplify the formula:
       i * (2 * steps + 3 - i) / 2;
-    const normals = new Float32Array(rowVertices(steps + 1) * 3);
+    const nVertices = rowVertices(steps + 1);
+    const normals = new Float32Array(nVertices * 3);
+    const uvs = new Float32Array(nVertices * 2);
 
     /** Compute a vertex index from the "logical" vertex position */
     const vtx = (i: number, j: number): number =>
       rowVertices(i) + j;
 
-    function setVertexData(idx: number, normal: B.Vector3): void {
+    function setVertexData(idx: number, normal: B.Vector3, u: number, v: number): void {
       normals[idx*3 + 0] = normal.x;
       normals[idx*3 + 1] = normal.y;
       normals[idx*3 + 2] = normal.z;
+      uvs[idx*2 + 0] = u;
+      uvs[idx*2 + 1] = v;
     }
 
     // ========== TRIANGLE UTILS ==========
@@ -166,7 +171,7 @@ class EighthSphereTriangulation extends B.Mesh {
     triangulation.forEach((row, i) => {
       /** Is it time to draw edges and faces parallel to the y axis? */
       row.forEach((v, j) => {
-        setVertexData(vtx(i, j), v);
+        setVertexData(vtx(i, j), v, (j+i/2)/steps, i/steps);
 
         if (i > 0)          triangle((u, v) => vtx(i-1+u, j+v));
         if (i > 0 && j > 0) triangle((u, v) => vtx(i-u  , j-v));
@@ -180,6 +185,7 @@ class EighthSphereTriangulation extends B.Mesh {
     if (smooth) {
       vertexData.normals = normals;
     }
+    vertexData.uvs = uvs;
     vertexData.indices = indices;
     vertexData.applyToMesh(this);
 
@@ -282,27 +288,51 @@ adjacentShapeElem.addEventListener("change", () => {
   adjacentShape.set(adjacentShapeElem.value as AdjacentShape);
 });
 
-const displayMode = M.observable.box("wireframe");
+const displayMode = M.observable.box("polyhedron");
 const displayModeElem = document.querySelector("#displayMode") as HTMLSelectElement;
 displayModeElem.value = displayMode.get();
 displayModeElem.addEventListener("change", () => {
   displayMode.set(displayModeElem.value);
 });
 
-const color = M.observable.box("#808080");
-const colorElem = document.querySelector("#color") as HTMLInputElement;
-colorElem.value = color.get();
-colorElem.addEventListener("change", () => {
-  color.set(colorElem.value);
+const color1 = M.observable.box("#ffffff");
+const color1Elem = document.querySelector("#color1") as HTMLInputElement;
+color1Elem.value = color1.get();
+color1Elem.addEventListener("change", () => {
+  color1.set(color1Elem.value);
+});
+
+const color2 = M.observable.box("#f0f0f0");
+const color2Elem = document.querySelector("#color2") as HTMLInputElement;
+color2Elem.value = color2.get();
+color2Elem.addEventListener("change", () => {
+  color2.set(color2Elem.value);
 });
 
 
-let estMaterial = createStandardMaterial("mat", {}, scene);
+const checkers = new CheckeredTexture("checkers", 1024, scene, {
+  // TODO make some of these configurable
+  offset: new B.Vector2(.2, .2),
+  density: new B.Vector2(10, 10),
+  // slant: new B.Vector2(1/4, 1/4),
+});
+M.autorun(() => checkers.color1 = B.Color4.FromHexString(color1.get()));
+M.autorun(() => checkers.color2 = B.Color4.FromHexString(color2.get()));
+
+function upd(t: number) {
+  const o = t / 10000;
+  checkers.offset = new B.Vector2(o, o);
+  requestAnimationFrame(upd);
+};
+// requestAnimationFrame(upd);
+
+let estMaterial = createStandardMaterial("mat", {
+  diffuseColor: B.Color3.White(),
+  diffuseTexture: checkers,
+  specularColor: new B.Color3(.07, .07, .07),
+}, scene);
 M.autorun(() => {
   estMaterial.wireframe = displayMode.get() === "wireframe";
-});
-M.autorun(() => {
-  estMaterial.diffuseColor = B.Color3.FromHexString(color.get());
 });
 
 let est: EighthSphereTriangulation | undefined;
@@ -466,7 +496,7 @@ if (true) {
   M.autorun(() => {
     mesh?.dispose();
 
-    const mats = matIndices[color.get()];
+    const mats = matIndices[color1.get()];
     const dispMode = displayMode.get();
     if (
       mats &&
