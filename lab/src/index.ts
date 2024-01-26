@@ -304,7 +304,7 @@ color1Elem.addEventListener("change", () => {
   color1.set(color1Elem.value);
 });
 
-const color2 = M.observable.box("#f0f0f0");
+const color2 = M.observable.box("#dddddd");
 const color2Elem = document.querySelector("#color2") as HTMLInputElement;
 color2Elem.value = color2.get();
 color2Elem.addEventListener("change", () => {
