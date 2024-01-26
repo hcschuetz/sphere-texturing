@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta charset="utf-8">
   <title>Octasphere</title>
   <style>
     body {
@@ -10,7 +11,9 @@
       margin: 0;
       padding: 0;
       font-size: calc(min(2vw, 3vh));
+      font-family: Arial, Helvetica, sans-serif;
       background-color: #003;
+      color: white;
     }
     #renderCanvas {
       position: fixed;
@@ -27,16 +30,13 @@
       position: fixed;
       top: 20px;
       left: 20px;
-      width: 30%;
-      color: white;
-      font-family: Arial, Helvetica, sans-serif;
       display: grid;
-      grid-template-columns: 10em 8em;
-      column-gap: 5px;
-      row-gap: 8px;
-      justify-items: stretch;
-      /* I'd prefer to stretch, but that does not work on firefox: */
-      align-items: center;
+      grid-template-columns: auto auto;
+      column-gap: .5em;
+      row-gap: 1ex;
+    }
+    #nSteps {
+      width: 14em;
     }
     label {
       padding: .3vw .5vw;
@@ -54,27 +54,27 @@
     }
     input[type=color] {
       height: 2em;
-      width: auto;
+      width: 7em;
+    }
+    .slant {
+      width: 7em;
+      margin: 0;
     }
     .outputs {
       z-index: 1;
       position: fixed;
       bottom: 20px;
       left: 20px;
-      width: 30%;
-      color: white;
-      font-family: Arial, Helvetica, sans-serif;
       display: grid;
-      grid-template-columns: 10em 6em;
-      column-gap: 5px;
-      row-gap: 8px;
-      justify-items: right;
+      grid-template-columns: auto auto;
+      column-gap: .5em;
+      row-gap: 1ex;
     }
     #maxBend {
       color: yellow;
     }
   </style>
-  <script type="module" crossorigin src="./assets/index--rTivHlx.js"></script>
+  <script type="module" crossorigin src="./assets/index-4eL4OmlD.js"></script>
 </head>
 <body>
   <div class="controlPanel">
@@ -97,26 +97,25 @@
       <option>smooth</option>
     </select>
 
-    <label for="color">color</label>
-    <input type="color" id="color">
+    <label>colors</label>
+    <span>
+      <input type="color" id="color1">
+      <input type="color" id="color2">
+    </span>
+
+    <label id="slantsLabel">slants</label>
+    <span>
+      <input type="range" id="slant1" class="slant">
+      <input type="range" id="slant2" class="slant">
+    </span>
   </div>
   <div class="outputs">
-    <span># steps</span>
-    <span id="nStepsOut"></span>
     <span># edges</span>
     <span id="nEdges"></span>
-    <span>mean edge length</span>
-    <span id="mean"></span>
-    <span>std. dev.</span>
-    <span id="stdDev"></span>
-    <span>std. dev. in % of mean</span>
-    <span id="stdDevInPercent"></span>
-    <span>min</span>
-    <span id="min"></span>
-    <span>max</span>
-    <span id="max"></span>
-    <span>max/min</span>
-    <span id="ratio"></span>
+    <span>Ø length</span>
+    <span id="meanEdge"></span>
+    <span>min : max</span>
+    <span id="minMax"></span>
     <span>max bend</span>
     <span id="maxBend"></span>
   </div>
