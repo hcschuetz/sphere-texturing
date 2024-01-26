@@ -23,18 +23,18 @@ const defaults = {
   color2 : new B.Color4(1,1,1,1),
 };
 
-type SuperConstrParams = ConstructorParameters<typeof B.CustomProceduralTexture>;
+type SuperConstrParams = ConstructorParameters<typeof B.ProceduralTexture>;
 
-export default class CheckeredTexture extends B.CustomProceduralTexture {
+export default class CheckeredTexture extends B.ProceduralTexture {
   constructor(
     name            : SuperConstrParams[0],
-    size            : SuperConstrParams[2],
-    scene           : SuperConstrParams[3],
+    size            : SuperConstrParams[1],
     uniforms        : Partial<typeof defaults>,
+    scene           : SuperConstrParams[3] = null,
     fallbackTexture?: SuperConstrParams[4],
     generateMipMaps?: SuperConstrParams[5],
   ) {
-    super(name, "Checkered", size, scene, fallbackTexture, generateMipMaps, true);
+    super(name, size, "Checkered", scene, fallbackTexture, generateMipMaps);
     Object.assign(this, defaults, uniforms);
   }
 
