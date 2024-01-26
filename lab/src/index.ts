@@ -330,12 +330,12 @@ M.autorun(() => slantsLabel.innerHTML = `slants (${slant1.get()}, ${slant2.get()
 
 
 const checkers = new CheckeredTexture("checkers", 1024, {
-  offset: new B.Vector2(.2, .2),
   density: new B.Vector2(10, 10),
+  offset: new B.Vector2(.2, .2),
 }, scene);
+M.autorun(() => checkers.slant = new B.Vector2(slant1.get(), slant2.get()));
 M.autorun(() => checkers.color1 = B.Color4.FromHexString(color1.get()));
 M.autorun(() => checkers.color2 = B.Color4.FromHexString(color2.get()));
-M.autorun(() => checkers.slant = new B.Vector2(slant1.get(), slant2.get()));
 
 function upd(t: number) {
   const o = t / 10000;
