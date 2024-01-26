@@ -8,7 +8,9 @@ B.Effect.ShadersStore.CheckeredPixelShader = `
 
   void main(void) {
     vec2 p = density * (vUV - offset);
-    vec2 counts = floor(p + slant * vec2(p.y, p.x));
+    vec2 q = slant * p;
+    p -= vec2(q.y, q.x);
+    vec2 counts = floor(p);
     gl_FragColor = mix(color1, color2, mod(counts.x + counts.y, 2.0));
   }
 `;

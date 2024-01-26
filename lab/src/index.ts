@@ -311,15 +311,31 @@ color2Elem.addEventListener("change", () => {
   color2.set(color2Elem.value);
 });
 
+const slant1 = M.observable.box(0);
+const slant1Elem = document.querySelector("#slant1") as HTMLInputElement;
+Object.assign(slant1Elem, {min: -1, max: 1, step: .05, value: slant1.get()});
+slant1Elem.addEventListener("change", () => {
+  slant1.set(Number.parseFloat(slant1Elem.value));
+});
+
+const slant2 = M.observable.box(0);
+const slant2Elem = document.querySelector("#slant2") as HTMLInputElement;
+Object.assign(slant2Elem, {min: -1, max: 1, step: .05, value: slant2.get()});
+slant2Elem.addEventListener("change", () => {
+  slant2.set(Number.parseFloat(slant2Elem.value));
+});
+
+const slantsLabel = document.querySelector("#slantsLabel")!;
+M.autorun(() => slantsLabel.innerHTML = `slants (${slant1.get()}, ${slant2.get()})`);
+
 
 const checkers = new CheckeredTexture("checkers", 1024, scene, {
-  // TODO make some of these configurable
   offset: new B.Vector2(.2, .2),
   density: new B.Vector2(10, 10),
-  // slant: new B.Vector2(1/4, 1/4),
 });
 M.autorun(() => checkers.color1 = B.Color4.FromHexString(color1.get()));
 M.autorun(() => checkers.color2 = B.Color4.FromHexString(color2.get()));
+M.autorun(() => checkers.slant = new B.Vector2(slant1.get(), slant2.get()));
 
 function upd(t: number) {
   const o = t / 10000;

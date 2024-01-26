@@ -36,6 +36,9 @@
       column-gap: .5em;
       row-gap: 1ex;
     }
+    #nSteps {
+      width: 14em;
+    }
     label {
       padding: .3vw .5vw;
     }
@@ -53,6 +56,10 @@
     input[type=color] {
       height: 2em;
       width: 7em;
+    }
+    .slant {
+      width: 7em;
+      margin: 0;
     }
     .outputs {
       z-index: 1;
@@ -94,6 +101,12 @@
     <span>
       <input type="color" id="color1">
       <input type="color" id="color2">
+    </span>
+
+    <label id="slantsLabel">slants</label>
+    <span>
+      <input type="range" id="slant1" class="slant">
+      <input type="range" id="slant2" class="slant">
     </span>
   </div>
   <div class="outputs">
