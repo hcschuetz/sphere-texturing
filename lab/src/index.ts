@@ -434,12 +434,13 @@ M.autorun(() => {
   const maxBend = dihedrals[0].bend;
   mostBentEdges.forEach(e => e.dispose());
   mostBentEdges =
+    displayMode.get() !== "wireframe" ? [] :
     dihedrals.filter(({bend}) => maxBend - bend < 1e-7)
     .map(({i, j, i_, j_}) => {
       const e = B.MeshBuilder.CreateTube("mostBentEdge", {
         path: [triangulation[i][j], triangulation[i_][j_]],
         tessellation: 6,
-        radius: 0.005,
+        radius: 0.01,
         cap: B.Mesh.CAP_ALL,
       }, scene);
       e.material = mostBentEdgeMat;
