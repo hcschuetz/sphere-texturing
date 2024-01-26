@@ -268,6 +268,8 @@ Object.assign(nStepsElem, {min: 1, max: 40, value: nSteps.get()});
 nStepsElem.addEventListener("change", () => {
   nSteps.set(Number.parseInt(nStepsElem.value));
 });
+const nStepsLabel = document.querySelector("label[for=nSteps]")!;
+M.autorun(() => nStepsLabel.innerHTML = `# steps (${nSteps.get()})`);
 
 const triangFn = M.observable.box("geodesics");
 const triangFnElem = document.querySelector("#triangFn") as HTMLSelectElement;
@@ -453,14 +455,9 @@ M.autorun(() => {
     document.querySelector(where)!.innerHTML = what;
   }
 
-  show("#nStepsOut", nSteps.get().toFixed());
   show("#nEdges", sum0.toFixed());
-  show("#mean", mean.toFixed(5));
-  show("#stdDev", stdDev.toFixed(5));
-  show("#stdDevInPercent", stdDevInPercent.toFixed(3));
-  show("#min", min.toFixed(5));
-  show("#max", max.toFixed(5));
-  show("#ratio", (max/min).toFixed(5));
+  show("#meanEdge", `${mean.toFixed(5)} ± ${stdDev.toFixed(5)} (±${stdDevInPercent.toFixed(3)}%)`);
+  show("#minMax", `${min.toFixed(5)} : ${max.toFixed(5)} (1 : ${(max/min).toFixed(5)})`);
   show("#maxBend", radToDeg(maxBend).toFixed(4) + "°")
 });
 
