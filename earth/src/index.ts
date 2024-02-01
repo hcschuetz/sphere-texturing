@@ -80,11 +80,18 @@ mapURLElem.addEventListener("change", () => {
 
 const smooth = M.computed(() => displayMode.get() !== "polyhedron");
 
+// We dispose old textures.  But can't this be nevertheless be written
+// in a way (almost) as simple as for `smooth`?
+let baseTexture = M.observable.box<B.Texture>(new B.Texture(mapURL.get(), scene));
+M.reaction(() => mapURL.get(), url => {
+  baseTexture.get().dispose();
+  baseTexture.set(new B.Texture(url, scene));
+});
+
 for (const quadrant of [0, 1, 2, 3]) {
   const texture = M.observable.box<B.Nullable<B.Texture>>(null);
-  M.reaction(() => mapURL.get(), url => {
+  M.reaction(() => baseTexture.get(), base => {
     texture.get()?.dispose();
-    const base = new B.Texture(url, scene);
     texture.set(
       new OctaQuarterTexture("triangTex", 1024, scene)
       .setTexture("base", base)
