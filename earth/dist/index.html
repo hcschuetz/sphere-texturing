@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Octasphere</title>
+  <style>
+    body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
+      font-size: calc(min(2vw, 3vh));
+      font-family: Arial, Helvetica, sans-serif;
+      background-color: #003;
+      color: white;
+    }
+    #renderCanvas {
+      position: fixed;
+      top: 0;
+      right: 0  ;
+      width: 70vw;
+      height: 100vh;
+    }
+    #renderCanvas:focus {
+      outline: none;
+    }
+    .controlPanel {
+      z-index: 1;
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      display: grid;
+      grid-template-columns: auto auto;
+      column-gap: .5em;
+      row-gap: 1ex;
+    }
+    #nSteps {
+      width: 14em;
+    }
+    label {
+      padding: .3vw .5vw;
+    }
+    .wide {
+      grid-column-end: span 2;
+    }
+    select {
+      font-size: inherit;
+      background-color: #003;
+      color: white;
+      border-radius: 4px;
+      padding: .3vw .5vw;
+    }
+    option {
+      background-color: #003;
+      color: white;
+    }
+  </style>
+  <script type="module" crossorigin src="./assets/index-CgmpPMsE.js"></script>
+</head>
+<body>
+  <div class="controlPanel">
+    <label for="nSteps"># steps</label>
+    <input type="range" id="nSteps">
+
+    <label for="displayMode">display mode</label>
+    <select id="displayMode">
+      <option>wireframe</option>
+      <option>polyhedron</option>
+      <option>smooth</option>
+    </select>
+
+    <label for="mapURL" class="wide">map URL (CORS-enabled, longitude/latitude mapping)</label>
+    <input id="mapURL" class="wide">
+  </div>
+  <canvas id="renderCanvas"></canvas>
+</body>
+</html>
