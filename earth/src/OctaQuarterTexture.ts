@@ -12,10 +12,9 @@ B.Effect.ShadersStore.OctaQuarterFragmentShader = `
     float u = vUV.x;
     float v = vUV.y;
 
+    float x = 1. - max(u, v);
     float y = v - u;
-    float yPos = max(0., y);
-    float z = v - yPos;
-    float x = 1. - u - yPos;
+    float z = min(u, v);
 
     float lat = asin(y * inversesqrt(x*x + y*y + z*z));
     float lon = atan(z, x);
