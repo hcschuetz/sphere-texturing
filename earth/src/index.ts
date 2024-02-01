@@ -1,5 +1,6 @@
 import * as B from "@babylonjs/core";
 import * as M from "mobx";
+import * as T from "../lib/triangulation";
 import OctaQuarterTexture from "./OctaQuarterTexture";
 import { QuarterOctasphere } from "./QuarterOctasphere";
 // import { log } from "./debug";
@@ -57,6 +58,17 @@ nStepsElem.addEventListener("change", () => {
 const nStepsLabel = document.querySelector("label[for=nSteps]")!;
 M.autorun(() => nStepsLabel.innerHTML = `# steps (${nSteps.get()})`);
 
+const triangFn = M.observable.box("geodesics");
+const triangFnElem = document.querySelector("#triangFn") as HTMLSelectElement;
+triangFnElem.innerHTML =
+  Object.keys(T.triangulationFns)
+  .filter(name => name !== "collapsed")
+  .map(name => `<option>${name}</option>`).join("\n");
+triangFnElem.value = triangFn.get();
+triangFnElem.addEventListener("change", () => {
+  triangFn.set(triangFnElem.value);
+});
+
 const displayMode = M.observable.box("polyhedron");
 const displayModeElem = document.querySelector("#displayMode") as HTMLSelectElement;
 displayModeElem.value = displayMode.get();
@@ -110,6 +122,7 @@ for (const quadrant of [0, 1, 2, 3]) {
     qo?.dispose();
     qo = new QuarterOctasphere("qo", {
       steps: nSteps.get(),
+      triangulationFn: T.triangulationFns[triangFn.get()],
       smooth: smooth.get(),
     }, scene);
     qo.material = material;

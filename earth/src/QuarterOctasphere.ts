@@ -9,6 +9,7 @@ export class QuarterOctasphere extends B.Mesh {
     name: string,
     options: {
       steps?: number;
+      triangulationFn: (n: number) => T.Triangulation,
       smooth: boolean;
     },
     scene?: B.Scene
@@ -16,7 +17,7 @@ export class QuarterOctasphere extends B.Mesh {
     super(name, scene);
 
     const {
-      steps = 6, smooth = true,
+      steps = 6, triangulationFn = T.geodesics, smooth = true
     } = options;
 
     // ========== VERTEX UTILS ==========
@@ -52,7 +53,7 @@ export class QuarterOctasphere extends B.Mesh {
     }
 
     // ========== CREATE VERTICES AND TRIANGLES ==========
-    const triangulation = T.geodesics(steps); // TODO make selectable again
+    const triangulation = triangulationFn(steps);
 
     [-1, 1].forEach((ySgn, h) => {
       const flip = ySgn < 0;
