@@ -76,17 +76,49 @@ displayModeElem.addEventListener("change", () => {
   displayMode.set(displayModeElem.value);
 });
 
-// TODO provide a menu of suggestions (+ explanations + citation)
-const mapURL = M.observable.box({
-  earth: "https://neo.gsfc.nasa.gov/servlet/RenderData?si=526304&cs=rgb&format=JPEG&width=3600&height=1800",
-  moon: "https://upload.wikimedia.org/wikipedia/commons/9/9d/Moon_map_grid_showing_artificial_objects_on_moon.PNG",
-  mars: "https://upload.wikimedia.org/wikipedia/commons/b/b7/Mars_G%C3%A9olocalisation.jpg",
-  "Tissot indicatrix": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Plate_Carr%C3%A9e_with_Tissot%27s_Indicatrices_of_Distortion.svg/2560px-Plate_Carr%C3%A9e_with_Tissot%27s_Indicatrices_of_Distortion.svg.png",
-}["earth"]);
+type URLExample = {name: string, url: string};
+
+const urlExamples: URLExample[] = [
+  {
+    name: "Earth",
+    url: "https://neo.gsfc.nasa.gov/servlet/RenderData?si=526304&cs=rgb&format=JPEG&width=3600&height=1800",
+  },
+  {
+    name: "Moon",
+    url: "https://upload.wikimedia.org/wikipedia/commons/9/9d/Moon_map_grid_showing_artificial_objects_on_moon.PNG",
+  },
+  {
+    name: "Mars",
+    url: "https://upload.wikimedia.org/wikipedia/commons/b/b7/Mars_G%C3%A9olocalisation.jpg",
+  },
+  {
+    name: "Earth with Tissot indicatrix",
+    url: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Plate_Carr%C3%A9e_with_Tissot%27s_Indicatrices_of_Distortion.svg/2560px-Plate_Carr%C3%A9e_with_Tissot%27s_Indicatrices_of_Distortion.svg.png",
+  },
+]
+
+const mapURL = M.observable.box(urlExamples[0].url);
 const mapURLElem = document.querySelector("#mapURL") as HTMLInputElement;
 mapURLElem.value = mapURL.get();
 mapURLElem.addEventListener("change", () => {
   mapURL.set(mapURLElem.value);
+});
+
+const mapURLExamplesElem = document.querySelector("#mapURLExamples") as HTMLSelectElement;
+mapURLExamplesElem.innerHTML =
+  `<option></option>` +
+  urlExamples
+  .map(({name, url}) => `<option value="${url}">${name}</option>`).join("\n");
+mapURLExamplesElem.value = "";
+mapURLExamplesElem.addEventListener("change", () => {
+  mapURL.set(mapURLElem.value = mapURLExamplesElem.value);
+});
+
+const stdSphere = M.observable.box(false);
+const stdSphereElem = document.querySelector("#stdSphere") as HTMLInputElement;
+stdSphereElem.checked = stdSphere.get();
+stdSphereElem.addEventListener("change", () => {
+  stdSphere.set(stdSphereElem.checked);
 });
 
 
@@ -94,24 +126,35 @@ const smooth = M.computed(() => displayMode.get() !== "polyhedron");
 
 // We dispose old textures.  But can't this be nevertheless be written
 // in a way (almost) as simple as for `smooth`?
-let baseTexture = M.observable.box<B.Texture>(Object.assign(
-  new B.Texture(mapURL.get(), scene), {
-    // Wrap around in east/west direction but not in north/south direction:
-    wrapU: B.Texture.WRAP_ADDRESSMODE,
-    wrapV: B.Texture.CLAMP_ADDRESSMODE,
-  }
-));
+let baseTexture = M.observable.box<B.Texture | null>(null);
 M.reaction(() => mapURL.get(), url => {
-  baseTexture.get().dispose();
-  baseTexture.set(new B.Texture(url, scene));
-});
+  baseTexture.get()?.dispose();
+  baseTexture.set(Object.assign(
+    new B.Texture(url, scene), {
+      // Wrap around in east/west direction but not in north/south direction:
+      wrapU: B.Texture.WRAP_ADDRESSMODE,
+      wrapV: B.Texture.CLAMP_ADDRESSMODE,
+    }
+  ));
+}, {fireImmediately: true});
+
+const sph = B.MeshBuilder.CreateSphere("sph", {diameter: 2}, scene);
+// TODO figure out why this rotation is needed:
+sph.rotate(v3(1,0,0), TAU/2);
+const sphMat = createStandardMaterial("sphMat", {
+  specularColor: new B.Color3(.2, .2, .2),
+  transparencyMode: B.Material.MATERIAL_ALPHABLEND,
+}, scene);
+sph.material = sphMat;
+M.autorun(() => sphMat.diffuseTexture = baseTexture.get());
+M.autorun(() => sphMat.alpha = stdSphere.get() ? 1 : 0);
 
 for (const quadrant of [0, 1, 2, 3]) {
   const texture = M.observable.box<B.Nullable<B.Texture>>(null);
   M.reaction(() => baseTexture.get(), base => {
     texture.get()?.dispose();
-    texture.set(Object.assign(
-      new OctaQuarterTexture("triangTex", 1024, scene)
+    texture.set(!base ? null : Object.assign(
+      new OctaQuarterTexture("triangTex", 1024*2, scene)
       .setTexture("base", base)
       .setFloat("quadrant", quadrant), {
         wrapU: B.Texture.CLAMP_ADDRESSMODE,
@@ -122,9 +165,11 @@ for (const quadrant of [0, 1, 2, 3]) {
 
   const material = createStandardMaterial("mat", {
     specularColor: new B.Color3(.2, .2, .2),
+    transparencyMode: B.Material.MATERIAL_ALPHABLEND,
   }, scene);
   M.autorun(() => material.diffuseTexture = texture.get());
   M.autorun(() => material.wireframe = displayMode.get() === "wireframe");
+  M.autorun(() => material.alpha = stdSphere.get() ? 0 : 1);
 
   let qo: QuarterOctasphere | undefined;
   M.autorun(() => {

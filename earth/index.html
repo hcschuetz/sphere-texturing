@@ -73,8 +73,14 @@
       <option>smooth</option>
     </select>
 
-    <label for="mapURL" class="wide">map URL (CORS-enabled, longitude/latitude mapping)</label>
+    <label for="mapURL" class="wide">map source (CORS-enabled, equirectangular)</label>
     <input id="mapURL" class="wide">
+
+    <label for="mapURLExamples">select example map</label>
+    <select id="mapURLExamples"></select>
+
+    <label for="stdSphere">show std sphere</label>
+    <input type="checkbox" id="stdSphere">
   </div>
   <canvas id="renderCanvas"></canvas>
 </body>
