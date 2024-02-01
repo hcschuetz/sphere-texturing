@@ -94,7 +94,13 @@ const smooth = M.computed(() => displayMode.get() !== "polyhedron");
 
 // We dispose old textures.  But can't this be nevertheless be written
 // in a way (almost) as simple as for `smooth`?
-let baseTexture = M.observable.box<B.Texture>(new B.Texture(mapURL.get(), scene));
+let baseTexture = M.observable.box<B.Texture>(Object.assign(
+  new B.Texture(mapURL.get(), scene), {
+    // Wrap around in east/west direction but not in north/south direction:
+    wrapU: B.Texture.WRAP_ADDRESSMODE,
+    wrapV: B.Texture.CLAMP_ADDRESSMODE,
+  }
+));
 M.reaction(() => mapURL.get(), url => {
   baseTexture.get().dispose();
   baseTexture.set(new B.Texture(url, scene));
@@ -104,11 +110,14 @@ for (const quadrant of [0, 1, 2, 3]) {
   const texture = M.observable.box<B.Nullable<B.Texture>>(null);
   M.reaction(() => baseTexture.get(), base => {
     texture.get()?.dispose();
-    texture.set(
+    texture.set(Object.assign(
       new OctaQuarterTexture("triangTex", 1024, scene)
       .setTexture("base", base)
-      .setFloat("quadrant", quadrant)
-    );  
+      .setFloat("quadrant", quadrant), {
+        wrapU: B.Texture.CLAMP_ADDRESSMODE,
+        wrapV: B.Texture.CLAMP_ADDRESSMODE,
+      }
+    ));  
   }, {fireImmediately: true});
 
   const material = createStandardMaterial("mat", {
@@ -127,8 +136,6 @@ for (const quadrant of [0, 1, 2, 3]) {
     }, scene);
     qo.material = material;
     qo.rotate(v3(0, -1, 0), quadrant * (TAU/4));
-
-    // TODO get rid of the visible seams at the main meridians
   });
 }
 
