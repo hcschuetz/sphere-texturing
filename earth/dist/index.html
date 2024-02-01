@@ -56,12 +56,15 @@
       color: white;
     }
   </style>
-  <script type="module" crossorigin src="./assets/index-CgmpPMsE.js"></script>
+  <script type="module" crossorigin src="./assets/index-Gt-OFeQP.js"></script>
 </head>
 <body>
   <div class="controlPanel">
     <label for="nSteps"># steps</label>
     <input type="range" id="nSteps">
+
+    <label for="triangFn">triangulation method</label>
+    <select id="triangFn"></select>
 
     <label for="displayMode">display mode</label>
     <select id="displayMode">
@@ -70,8 +73,14 @@
       <option>smooth</option>
     </select>
 
-    <label for="mapURL" class="wide">map URL (CORS-enabled, longitude/latitude mapping)</label>
+    <label for="mapURL" class="wide">map source (CORS-enabled, equirectangular)</label>
     <input id="mapURL" class="wide">
+
+    <label for="mapURLExamples">select example map</label>
+    <select id="mapURLExamples"></select>
+
+    <label for="stdSphere">show std sphere</label>
+    <input type="checkbox" id="stdSphere">
   </div>
   <canvas id="renderCanvas"></canvas>
 </body>
