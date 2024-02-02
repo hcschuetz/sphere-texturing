@@ -61,7 +61,7 @@ M.autorun(() => nStepsLabel.innerHTML = `# steps (${nSteps.get()})`);
 const triangFn = M.observable.box("geodesics");
 const triangFnElem = document.querySelector("#triangFn") as HTMLSelectElement;
 triangFnElem.innerHTML =
-  Object.keys(T.triangulationFns)
+  ["babylon", ...Object.keys(T.triangulationFns)]
   .filter(name => name !== "collapsed")
   .map(name => `<option>${name}</option>`).join("\n");
 triangFnElem.value = triangFn.get();
@@ -114,13 +114,6 @@ mapURLExamplesElem.addEventListener("change", () => {
   mapURL.set(mapURLElem.value = mapURLExamplesElem.value);
 });
 
-const stdSphere = M.observable.box(false);
-const stdSphereElem = document.querySelector("#stdSphere") as HTMLInputElement;
-stdSphereElem.checked = stdSphere.get();
-stdSphereElem.addEventListener("change", () => {
-  stdSphere.set(stdSphereElem.checked);
-});
-
 
 const smooth = M.computed(() => displayMode.get() !== "polyhedron");
 
@@ -138,16 +131,32 @@ M.reaction(() => mapURL.get(), url => {
   ));
 }, {fireImmediately: true});
 
-const sph = B.MeshBuilder.CreateSphere("sph", {diameter: 2}, scene);
-// TODO figure out why this rotation is needed:
-sph.rotate(v3(1,0,0), TAU/2);
 const sphMat = createStandardMaterial("sphMat", {
   specularColor: new B.Color3(.2, .2, .2),
   transparencyMode: B.Material.MATERIAL_ALPHABLEND,
 }, scene);
-sph.material = sphMat;
 M.autorun(() => sphMat.diffuseTexture = baseTexture.get());
-M.autorun(() => sphMat.alpha = stdSphere.get() ? 1 : 0);
+M.autorun(() => sphMat.alpha = Number(triangFn.get() === "babylon"));
+M.autorun(() => sphMat.wireframe = displayMode.get() === "wireframe");
+
+const sph = new B.Mesh("sph", scene);
+// TODO figure out why this rotation is needed:
+sph.rotate(v3(1,0,0), TAU/2);
+sph.material = sphMat;
+M.autorun(() => {
+  B.CreateSphereVertexData({
+    diameter: 2,
+    segments: nSteps.get()
+  }).applyToMesh(sph, true);
+  if (smooth.get()) {
+    sph.updateVerticesData(B.VertexBuffer.NormalKind,
+      sph.getVerticesData(B.VertexBuffer.PositionKind)!,
+    );
+  } else {
+    sph.removeVerticesData(B.VertexBuffer.NormalKind);
+  }
+});
+
 
 for (const quadrant of [0, 1, 2, 3]) {
   const texture = M.observable.box<B.Nullable<B.Texture>>(null);
@@ -169,14 +178,16 @@ for (const quadrant of [0, 1, 2, 3]) {
   }, scene);
   M.autorun(() => material.diffuseTexture = texture.get());
   M.autorun(() => material.wireframe = displayMode.get() === "wireframe");
-  M.autorun(() => material.alpha = stdSphere.get() ? 0 : 1);
+  M.autorun(() => material.alpha = Number(triangFn.get() !== "babylon"));
 
   let qo: QuarterOctasphere | undefined;
   M.autorun(() => {
     qo?.dispose();
     qo = new QuarterOctasphere("qo", {
+      // TODO Only rebuild vertices, not the entire mesh upon changes to `steps`.
       steps: nSteps.get(),
       triangulationFn: T.triangulationFns[triangFn.get()],
+      // TODO Switch smoothness on/off as for `sph` without rebuilding the mesh.
       smooth: smooth.get(),
     }, scene);
     qo.material = material;
