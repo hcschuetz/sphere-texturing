@@ -104,6 +104,9 @@ mapURLElem.addEventListener("change", () => {
   mapURL.set(mapURLElem.value);
 });
 
+const mapLinkElem = document.querySelector("#mapLink") as HTMLAnchorElement;
+M.autorun(() => mapLinkElem.href = mapURL.get());
+
 const mapURLExamplesElem = document.querySelector("#mapURLExamples") as HTMLSelectElement;
 mapURLExamplesElem.innerHTML =
   `<option></option>` +

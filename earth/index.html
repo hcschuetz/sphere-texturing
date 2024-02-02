@@ -36,14 +36,17 @@
       column-gap: .5em;
       row-gap: 1ex;
     }
+    .wide {
+      grid-column-end: span 2;
+    }
+    label {
+      padding: .3vw 0;
+    }
     #nSteps {
       width: 14em;
     }
-    label {
-      padding: .3vw .5vw;
-    }
-    .wide {
-      grid-column-end: span 2;
+    #mapLink {
+      text-decoration: none;
     }
     select {
       font-size: inherit;
@@ -74,7 +77,10 @@
     </select>
 
     <label for="mapURL" class="wide">map source (CORS-enabled, equirectangular)</label>
-    <input id="mapURL" class="wide">
+    <span class="wide" style="display: flex;">
+      <input id="mapURL" style="flex-grow: 1;">
+      <a id="mapLink" target="_blank" title="Open base map in new tab">🔗</a>
+    </span>
 
     <label for="mapURLExamples">select example map</label>
     <select id="mapURLExamples"></select>
