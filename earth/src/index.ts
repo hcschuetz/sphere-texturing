@@ -3,8 +3,8 @@ import * as M from "mobx";
 import * as T from "../lib/triangulation";
 import OctaQuarterTexture from "./OctaQuarterTexture";
 import { QuarterOctasphere } from "./QuarterOctasphere";
+import createIcoSprite from "./IcoSprite";
 // import { log } from "./debug";
-
 
 M.configure({enforceActions: "never"});
 
@@ -61,7 +61,7 @@ M.autorun(() => nStepsLabel.innerHTML = `# steps (${nSteps.get()})`);
 const triangFn = M.observable.box("geodesics");
 const triangFnElem = document.querySelector("#triangFn") as HTMLSelectElement;
 triangFnElem.innerHTML =
-  ["babylon", ...Object.keys(T.triangulationFns)]
+  ["[babylon] sphere", "[babylon] icosphere", ...Object.keys(T.triangulationFns)]
   .filter(name => name !== "collapsed")
   .map(name => `<option>${name}</option>`).join("\n");
 triangFnElem.value = triangFn.get();
@@ -139,7 +139,7 @@ const sphMat = createStandardMaterial("sphMat", {
   transparencyMode: B.Material.MATERIAL_ALPHABLEND,
 }, scene);
 M.autorun(() => sphMat.diffuseTexture = baseTexture.get());
-M.autorun(() => sphMat.alpha = Number(triangFn.get() === "babylon"));
+M.autorun(() => sphMat.alpha = Number(triangFn.get() === "[babylon] sphere"));
 M.autorun(() => sphMat.wireframe = displayMode.get() === "wireframe");
 
 const sph = new B.Mesh("sph", scene);
@@ -159,6 +159,45 @@ M.autorun(() => {
     sph.removeVerticesData(B.VertexBuffer.NormalKind);
   }
 });
+
+
+const icoMat = createStandardMaterial("icoMat", {
+  specularColor: new B.Color3(.2, .2, .2),
+  transparencyMode: B.Material.MATERIAL_ALPHABLEND,
+}, scene);
+const icoSprite = M.observable.box<B.Nullable<B.Texture>>(null);
+M.reaction(() => baseTexture.get(), base => {
+  icoSprite.get()?.dispose();
+  icoSprite.set(!base ? null : createIcoSprite("icoSprite", 3 * 1024, base, scene));
+}, {fireImmediately: true});
+M.autorun(() => icoMat.diffuseTexture = icoSprite.get());
+M.autorun(() => icoMat.alpha = Number(triangFn.get() === "[babylon] icosphere"));
+M.autorun(() => icoMat.wireframe = displayMode.get() === "wireframe");
+
+const icoSphere = new B.Mesh("icoSphere");
+icoSphere.rotate(v3(0,1,0), TAU/2); // for analogy with the other spheres
+icoSphere.material = icoMat;
+M.autorun(() => {
+  B.CreateIcoSphereVertexData({
+    subdivisions: nSteps.get(),
+  }).applyToMesh(icoSphere, true);
+  if (smooth.get()) {
+    icoSphere.updateVerticesData(B.VertexBuffer.NormalKind,
+      icoSphere.getVerticesData(B.VertexBuffer.PositionKind)!,
+    );
+  } else {
+    icoSphere.removeVerticesData(B.VertexBuffer.NormalKind);
+  }
+});
+
+// // Debugging: Display the icoSprite in a square over the Pacific Ocean:
+// const uvs = [[0, 0], [1, 0], [1, 1], [0, 1]];
+// const spriteDisplay = new B.Mesh("sprite display", scene)
+//   .setIndices([[0, 1, 2], [0, 2, 3]].flat())
+//   .setVerticesData(B.VertexBuffer.PositionKind, uvs.flatMap(([u,v]) => [-1.3, v-.5, .5-u]))
+//   .setVerticesData(B.VertexBuffer.UVKind      , uvs.flat());
+// spriteDisplay.material = icoMat;
+// spriteDisplay.parent = icoSphere;
 
 
 for (const quadrant of [0, 1, 2, 3]) {
@@ -181,7 +220,7 @@ for (const quadrant of [0, 1, 2, 3]) {
   }, scene);
   M.autorun(() => material.diffuseTexture = texture.get());
   M.autorun(() => material.wireframe = displayMode.get() === "wireframe");
-  M.autorun(() => material.alpha = Number(triangFn.get() !== "babylon"));
+  M.autorun(() => material.alpha = Number(!triangFn.get().startsWith("[babylon]")));
 
   let qo: QuarterOctasphere | undefined;
   M.autorun(() => {
