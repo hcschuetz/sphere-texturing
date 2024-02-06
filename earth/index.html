@@ -26,20 +26,25 @@
     #renderCanvas:focus {
       outline: none;
     }
-    .controlPanel {
+    .controlPanel, .outputs {
       z-index: 1;
       position: fixed;
-      top: 20px;
       left: 20px;
       display: grid;
       grid-template-columns: auto auto;
       column-gap: .5em;
       row-gap: 1ex;
     }
+    .controlPanel {
+      top: 20px;
+    }
+    .outputs {
+      bottom: 20px;
+    }
     .wide {
       grid-column-end: span 2;
     }
-    label {
+    label, output {
       padding: .3vw 0;
     }
     #nSteps {
@@ -84,6 +89,10 @@
 
     <label for="mapURLExamples">select example map</label>
     <select id="mapURLExamples"></select>
+  </div>
+  <div class="outputs">
+    <label for="numberOfTriangles"># triangles</label>
+    <output id="numberOfTriangles"></output>
   </div>
   <canvas id="renderCanvas"></canvas>
 </body>

@@ -117,6 +117,11 @@ mapURLExamplesElem.addEventListener("change", () => {
   mapURL.set(mapURLElem.value = mapURLExamplesElem.value);
 });
 
+const numberOfTrianglesElem = document.querySelector("#numberOfTriangles");
+const numberOfIndices = M.observable.box<number>(0);
+M.autorun(() => numberOfTrianglesElem!.textContent = (numberOfIndices.get() / 3).toFixed());
+
+
 
 const smooth = M.computed(() => displayMode.get() !== "polyhedron");
 
@@ -151,6 +156,9 @@ M.autorun(() => {
     diameter: 2,
     segments: nSteps.get()
   }).applyToMesh(sph, true);
+  if (triangFn.get() === "[babylon] sphere") {
+    numberOfIndices.set(sph.getIndices()!.length);
+  }
   if (smooth.get()) {
     sph.updateVerticesData(B.VertexBuffer.NormalKind,
       sph.getVerticesData(B.VertexBuffer.PositionKind)!,
@@ -181,6 +189,9 @@ M.autorun(() => {
   B.CreateIcoSphereVertexData({
     subdivisions: nSteps.get(),
   }).applyToMesh(icoSphere, true);
+  if (triangFn.get() === "[babylon] icosphere") {
+    numberOfIndices.set(icoSphere.getIndices()!.length);
+  }
   if (smooth.get()) {
     icoSphere.updateVerticesData(B.VertexBuffer.NormalKind,
       icoSphere.getVerticesData(B.VertexBuffer.PositionKind)!,
@@ -234,6 +245,9 @@ for (const quadrant of [0, 1, 2, 3]) {
     }, scene);
     qo.material = material;
     qo.rotate(v3(0, -1, 0), quadrant * (TAU/4));
+    if (!triangFn.get().startsWith("[babylon]") && quadrant === 0) {
+      numberOfIndices.set(qo.getIndices()!.length * 4);
+    }
   });
 }
 
