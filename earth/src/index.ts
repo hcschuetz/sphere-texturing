@@ -1,9 +1,9 @@
 import * as B from "@babylonjs/core";
 import * as M from "mobx";
 import * as T from "../lib/triangulation";
-import OctaQuarterTexture from "./OctaQuarterTexture";
-import { QuarterOctasphere } from "./QuarterOctasphere";
 import createIcoSprite from "./IcoSprite";
+import { createOctaSprite } from "./OctaSprite";
+import { createOctaSphereVertexData } from "./OctaSphere";
 // import { log } from "./debug";
 
 M.configure({enforceActions: "never"});
@@ -124,6 +124,15 @@ M.autorun(() => numberOfTrianglesElem!.textContent = (numberOfIndices.get() / 3)
 
 
 const smooth = M.computed(() => displayMode.get() !== "polyhedron");
+function updateSmooth(mesh: B.Mesh) {
+  if (smooth.get()) {
+    mesh.updateVerticesData(B.VertexBuffer.NormalKind,
+      mesh.getVerticesData(B.VertexBuffer.PositionKind)!,
+    );
+  } else {
+    mesh.removeVerticesData(B.VertexBuffer.NormalKind);
+  }
+}
 
 // We dispose old textures.  But can't this be nevertheless be written
 // in a way (almost) as simple as for `smooth`?
@@ -159,13 +168,7 @@ M.autorun(() => {
   if (triangFn.get() === "[babylon] sphere") {
     numberOfIndices.set(sph.getIndices()!.length);
   }
-  if (smooth.get()) {
-    sph.updateVerticesData(B.VertexBuffer.NormalKind,
-      sph.getVerticesData(B.VertexBuffer.PositionKind)!,
-    );
-  } else {
-    sph.removeVerticesData(B.VertexBuffer.NormalKind);
-  }
+  updateSmooth(sph);
 });
 
 
@@ -192,13 +195,7 @@ M.autorun(() => {
   if (triangFn.get() === "[babylon] icosphere") {
     numberOfIndices.set(icoSphere.getIndices()!.length);
   }
-  if (smooth.get()) {
-    icoSphere.updateVerticesData(B.VertexBuffer.NormalKind,
-      icoSphere.getVerticesData(B.VertexBuffer.PositionKind)!,
-    );
-  } else {
-    icoSphere.removeVerticesData(B.VertexBuffer.NormalKind);
-  }
+  updateSmooth(icoSphere);
 });
 
 // // Debugging: Display the icoSprite in a square over the Pacific Ocean:
@@ -211,45 +208,52 @@ M.autorun(() => {
 // spriteDisplay.parent = icoSphere;
 
 
-for (const quadrant of [0, 1, 2, 3]) {
-  const texture = M.observable.box<B.Nullable<B.Texture>>(null);
-  M.reaction(() => baseTexture.get(), base => {
-    texture.get()?.dispose();
-    texture.set(!base ? null : Object.assign(
-      new OctaQuarterTexture("triangTex", 1024*2, scene)
-      .setTexture("base", base)
-      .setFloat("quadrant", quadrant), {
-        wrapU: B.Texture.CLAMP_ADDRESSMODE,
-        wrapV: B.Texture.CLAMP_ADDRESSMODE,
-      }
-    ));  
-  }, {fireImmediately: true});
+const octaMat = createStandardMaterial("octaMat", {
+  specularColor: new B.Color3(.2, .2, .2),
+  transparencyMode: B.Material.MATERIAL_ALPHABLEND,
+}, scene);
+const octaSprite = M.observable.box<B.Nullable<B.Texture>>(null);
+M.reaction(() => baseTexture.get(), base => {
+  octaSprite.get()?.dispose();
+  octaSprite.set(!base ? null : createOctaSprite("octaSprite", 5000, base, scene));
+}, {fireImmediately: true});
+M.autorun(() => octaMat.diffuseTexture = octaSprite.get());
+M.autorun(() => octaMat.alpha = Number(!triangFn.get().startsWith("[")));
+M.autorun(() => octaMat.wireframe = displayMode.get() === "wireframe");
 
-  const material = createStandardMaterial("mat", {
-    specularColor: new B.Color3(.2, .2, .2),
-    transparencyMode: B.Material.MATERIAL_ALPHABLEND,
-  }, scene);
-  M.autorun(() => material.diffuseTexture = texture.get());
-  M.autorun(() => material.wireframe = displayMode.get() === "wireframe");
-  M.autorun(() => material.alpha = Number(!triangFn.get().startsWith("[babylon]")));
+const octaSphere = new B.Mesh("octaSphere");
+octaSphere.material = octaMat;
+M.autorun(() => {
+  createOctaSphereVertexData(
+    T.triangulationFns[triangFn.get()](nSteps.get())
+  ).applyToMesh(octaSphere, true);
+  if (!triangFn.get().startsWith("[")) {
+    numberOfIndices.set(octaSphere.getIndices()!.length);
+  }
+  updateSmooth(octaSphere);
+});
 
-  let qo: QuarterOctasphere | undefined;
-  M.autorun(() => {
-    qo?.dispose();
-    qo = new QuarterOctasphere("qo", {
-      // TODO Only rebuild vertices, not the entire mesh upon changes to `steps`.
-      steps: nSteps.get(),
-      triangulationFn: T.triangulationFns[triangFn.get()],
-      // TODO Switch smoothness on/off as for `sph` without rebuilding the mesh.
-      smooth: smooth.get(),
-    }, scene);
-    qo.material = material;
-    qo.rotate(v3(0, -1, 0), quadrant * (TAU/4));
-    if (!triangFn.get().startsWith("[babylon]") && quadrant === 0) {
-      numberOfIndices.set(qo.getIndices()!.length * 4);
-    }
-  });
-}
+// // Debugging: Display the octaSprite in a rectangle over the North Pole:
+// function sizeRatio(texture: B.Nullable<B.Texture>): number {
+//   if (!texture) {
+//     return 1;
+//   }
+//   const {width, height} = texture.getSize();
+//   return height / width;
+// }
+// const uvs = [[0, 0], [1, 0], [1, 1], [0, 1]];
+// const zoom = 2;
+// const spriteDisplay = new B.Mesh("sprite display", scene)
+//   .setIndices([[0, 1, 2], [0, 2, 3]].flat())
+//   .setVerticesData(B.VertexBuffer.PositionKind, uvs.flatMap(([u,v]) => [
+//     0,
+//     v * zoom * sizeRatio(octaSprite.get()) + 1.2,
+//     (u - .5) * zoom,
+//   ]))
+//   .setVerticesData(B.VertexBuffer.UVKind      , uvs.flat());
+// spriteDisplay.rotate(v3(0,1,0), TAU/2);
+// spriteDisplay.material = octaMat;
+// spriteDisplay.parent = octaSphere;
 
 
 engine.runRenderLoop(() => scene.render());
