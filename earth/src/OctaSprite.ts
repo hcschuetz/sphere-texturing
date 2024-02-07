@@ -66,7 +66,7 @@ void main(void) {
   vec3 wye = normalize(vec3(we.x, y, we.y));
 
   // // debugging
-  if (any(lessThan(abs(wye), vec3(0.005)))) {gl_FragColor = vec4(1.,1.,0.,1.); return;}
+  // if (any(lessThan(abs(wye), vec3(0.005)))) {gl_FragColor = vec4(1.,1.,0.,1.); return;}
 
   float lat = asin(wye.y);
   float lon = atan(wye.z, wye.x) + q * ${TAU/4};
