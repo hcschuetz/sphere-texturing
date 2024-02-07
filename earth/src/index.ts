@@ -134,8 +134,7 @@ function updateSmooth(mesh: B.Mesh) {
   }
 }
 
-// We dispose old textures.  But can't this be nevertheless be written
-// in a way (almost) as simple as for `smooth`?
+// We dispose old textures.  But can't we nevertheless just use M.computed(...)?
 let baseTexture = M.observable.box<B.Texture | null>(null);
 M.reaction(() => mapURL.get(), url => {
   baseTexture.get()?.dispose();
