@@ -25,24 +25,32 @@
     #renderCanvas:focus {
       outline: none;
     }
-    .controlPanel {
+    .controlPanel, .outputs {
       z-index: 1;
       position: fixed;
-      top: 20px;
       left: 20px;
       display: grid;
       grid-template-columns: auto auto;
       column-gap: .5em;
       row-gap: 1ex;
     }
-    #nSteps {
-      width: 14em;
+    .controlPanel {
+      top: 20px;
     }
-    label {
-      padding: .3vw .5vw;
+    .outputs {
+      bottom: 20px;
     }
     .wide {
       grid-column-end: span 2;
+    }
+    label, output {
+      padding: .3vw 0;
+    }
+    #nSteps {
+      width: 14em;
+    }
+    #mapLink {
+      text-decoration: none;
     }
     select {
       font-size: inherit;
@@ -56,7 +64,7 @@
       color: white;
     }
   </style>
-  <script type="module" crossorigin src="./assets/index-7vnFF-Dq.js"></script>
+  <script type="module" crossorigin src="./assets/index-r7lfs8Cq.js"></script>
 </head>
 <body>
   <div class="controlPanel">
@@ -74,10 +82,17 @@
     </select>
 
     <label for="mapURL" class="wide">map source (CORS-enabled, equirectangular)</label>
-    <input id="mapURL" class="wide">
+    <span class="wide" style="display: flex;">
+      <input id="mapURL" style="flex-grow: 1;">
+      <a id="mapLink" target="_blank" title="Open base map in new tab">🔗</a>
+    </span>
 
     <label for="mapURLExamples">select example map</label>
     <select id="mapURLExamples"></select>
+  </div>
+  <div class="outputs">
+    <label for="numberOfTriangles"># triangles</label>
+    <output id="numberOfTriangles"></output>
   </div>
   <canvas id="renderCanvas"></canvas>
 </body>
