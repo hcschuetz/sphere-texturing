@@ -1,3 +1,58 @@
+/*
+Sprite Layout
+=============
+
+Conventions:
+- We use Babylon's left-handed xyz coordinates.
+- We deal with the unit sphere centered at the origin of the coordinate
+  system.
+- In our names and comments we consider the y axis pointing northward.
+  Thus (0, 1, 0) and (0, -1, 0) are the north pole and the south pole of
+  the sphere and the x/z plane is the equatorial plane.
+
+Mapping the sphere to a rectangle:
+- First the sphere is mapped by a central projection to the faces of an
+  inscribed regular octahedron with vertices on the coordinate axes.
+  (Within the faces we use barycentric coordinates.)
+- Now let the four northern faces of the octahedron be called N0 to N3 in
+  west-east direction.  We map them linearly to triangles in the rectangle
+  as shown in the image below.  The equator goes to the lower edge of the
+  rectangle (v == 0) and the north pole goes to the upper edge (v == 1).
+- The four corresponding southern faces S0 to S3 are mapped similarly.
+  The equator goes to the upper edge (v == 1) and the south pole goes to
+  the lower edge (v == 0).  To fit in the spaces between the northern faces,
+  we shift the southern faces left by 1/8 of the rectangle width (relative
+  to their northern counterparts).  The half of S0 that would go beyond the
+  left edge of the rectangle is wrapped around to the right end.  We
+  configure the rectangle texture to be wrapping in the u direction to deal
+  with this.
+
+  1 +------------------------+
+    |S0/\ S1 /\ S2 /\ S3 /\S0|
+  v | /  \  /  \  /  \  /  \ |
+    |/ N0 \/ N1 \/ N2 \/ N3 \|
+  0 +------------------------+
+    0           u            1
+
+- To avoid problems with rounding and interpolations, we leave little
+  gaps between neighboring triangles.  The mapping of each triangle is
+  continued to the middle of the gap.
+- We use a rectangular texture where the ratio between width and height
+  is adjusted in such a way that the triangles are (approximately)
+  equilateral.
+
+The mapping from xyz position coordinates to uv texture coordinates is
+implemented by the function `getUV(...)` below.
+
+The shader code is used to convert an equirectangular texture to a sprite
+sheet usable by an octasphere.  For this it performs the inverse mapping,
+converting a point in uv space to xyz space.  Then it goes on and maps the
+xyz coordinates to longitude and latitude, normalizes these to [0..1]x[0..1],
+and looks up a color value in an input map with equirectangular projection.
+(Actually the shader bypasses the xyz coordinates and goes directly from
+the barycentric face coordinates to longitude and latitude.)
+*/
+
 import * as B from "@babylonjs/core";
 import * as G from "gl-matrix";
 
@@ -47,34 +102,34 @@ varying vec2 vUV;
 
 uniform sampler2D base;
 
-mat3x2 uv12we = mat3x2(${uv12we.map(x => x.toString()).join(", ")});
+mat3x2 uv12we = mat3x2(${uv12we});
 
 void main(void) {
   float u = vUV.x, v = vUV.y;
-  float diag = -mix(${du/2}, ${1/8 - du/2}, v);
+  float diag = mix(${du/2}, ${1/8 - du/2}, v);
   // octahedron face identified by quadrant and north/south flag:
-  float q = floor((u - diag) * 4.);
-  bool north = q == floor((u + diag) * 4.);
+  float q = floor((u + diag) * 4.);
+  bool north = q == floor((u - diag) * 4.);
 
-  // Adjust uv to the sprite triangle for quadrant 0, northern hemisphere:
+  // Adjust uv to the sprite triangle for quadrant 0 of the northern hemisphere:
   vec3 uv1 = vec3(u - q/4. + mix(${1/8}, 0., north), mix(1. - v, v, north), 1);
+
+  // "wpe" would be the barycentric coordinates on the current face.
+  // We omit p here because it easy to compute y directly from v without
+  // p as an intermediate step.
   vec2 we = uv12we * uv1;
   float y = v - mix(1., 0., north);
 
-  // wye is like xyz, but still needs to be rotated around the y axis.
-  // We postpone this to the longitude computation, where it is easier.
-  vec3 wye = normalize(vec3(we.x, y, we.y));
-
   // // debugging
-  // if (any(lessThan(abs(wye), vec3(0.005)))) {gl_FragColor = vec4(1.,1.,0.,1.); return;}
+  // if (any(lessThan(abs(vec3(we, y)), vec3(0.005)))) {gl_FragColor = vec4(1,1,0,1); return;}
 
-  float lat = asin(wye.y);
-  float lon = atan(wye.z, wye.x) + q * ${TAU/4};
+  float lat = asin(y * inversesqrt(we.x*we.x + y*y + we.y*we.y));
+  float lon = atan(we.y, we.x) + q * ${TAU/4};
 
   // TODO take level of detail into account
   gl_FragColor = texture(base, vec2(
-    lon / ${TAU},
-    lat / ${TAU/2} + .5
+    lon * ${1/TAU},
+    lat * ${2/TAU} + .5
   ));
 }
 `;
@@ -103,9 +158,9 @@ const getHeight = (width: number) => (width/4 - 2*du) * (Math.sqrt(3)/2);
  * to the corresponding `uv` value.
  * 
  * Actually that mapping is ambiguous if `pos` points to a boundary between
- * faces, that is, if one of its coordinates is 0.
+ * faces.
  * The second argument `faceRef` should be a vector pointing inside the
- * requested face and is used to resolve that ambiguity.
+ * requested face and is used to avoid that ambiguity.
  * (You can simply use the sum of the 3 corner vectors of the face.)
  * 
  * The input vectors need not be normalized.  They represent directions
