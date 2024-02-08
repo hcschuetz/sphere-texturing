@@ -11969,34 +11969,34 @@ varying vec2 vUV;
 
 uniform sampler2D base;
 
-mat3x2 uv12we = mat3x2(${Qk.map(a=>a.toString()).join(", ")});
+mat3x2 uv12we = mat3x2(${Qk});
 
 void main(void) {
   float u = vUV.x, v = vUV.y;
-  float diag = -mix(${Uu/2}, ${1/8-Uu/2}, v);
+  float diag = mix(${Uu/2}, ${1/8-Uu/2}, v);
   // octahedron face identified by quadrant and north/south flag:
-  float q = floor((u - diag) * 4.);
-  bool north = q == floor((u + diag) * 4.);
+  float q = floor((u + diag) * 4.);
+  bool north = q == floor((u - diag) * 4.);
 
-  // Adjust uv to the sprite triangle for quadrant 0, northern hemisphere:
+  // Adjust uv to the sprite triangle for quadrant 0 of the northern hemisphere:
   vec3 uv1 = vec3(u - q/4. + mix(${1/8}, 0., north), mix(1. - v, v, north), 1);
+
+  // "wpe" would be the barycentric coordinates on the current face.
+  // We omit p here because it easy to compute y directly from v without
+  // p as an intermediate step.
   vec2 we = uv12we * uv1;
   float y = v - mix(1., 0., north);
 
-  // wye is like xyz, but still needs to be rotated around the y axis.
-  // We postpone this to the longitude computation, where it is easier.
-  vec3 wye = normalize(vec3(we.x, y, we.y));
-
   // // debugging
-  // if (any(lessThan(abs(wye), vec3(0.005)))) {gl_FragColor = vec4(1.,1.,0.,1.); return;}
+  // if (any(lessThan(abs(vec3(we, y)), vec3(0.005)))) {gl_FragColor = vec4(1,1,0,1); return;}
 
-  float lat = asin(wye.y);
-  float lon = atan(wye.z, wye.x) + q * ${Ep/4};
+  float lat = asin(y * inversesqrt(we.x*we.x + y*y + we.y*we.y));
+  float lon = atan(we.y, we.x) + q * ${Ep/4};
 
   // TODO take level of detail into account
   gl_FragColor = texture(base, vec2(
-    lon / ${Ep},
-    lat / ${Ep/2} + .5
+    lon * ${1/Ep},
+    lat * ${2/Ep} + .5
   ));
 }
 `;const Zk=(a,e,t,i)=>Object.assign(new Gr(a,{width:e,height:Jk(e)},"OctaSprite",i).setTexture("base",t),{wrapU:G.WRAP_ADDRESSMODE,wrapV:G.CLAMP_ADDRESSMODE}),Jk=a=>(a/4-2*Uu)*(Math.sqrt(3)/2);function eG(a,e){let{x:t,y:i,z:s}=a;t=Math.abs(t),i=Math.abs(i),s=Math.abs(s);const r=1/(t+i+s);t*=r,i*=r,s*=r;let[n,o]=jk(new Float32Array(3),$k(t,i,s),kb);return e.x<0&&(n=.5-n),e.z<0&&(n=1-n),e.y<0&&(o=1-o,n-=1/8),new J(n,o)}const Sp=[-1,1];function tG(a){const e=[],t=[],i=[];let s=0;for(const r of Sp)for(const n of Sp)for(const o of Sp){let l=function(u,d,f){i.push(u,c?f:d,c?d:f)};const h=new g(r,n,o),c=r*n*o>0;a.forEach((u,d)=>{u.forEach((f,_)=>{e.push(r*f.x,n*f.y,o*f.z);const p=eG(f,h);t.push(p.x,p.y);const m=s++;if(d>0){const v=m-u.length,x=v-1;if(l(m,v,x),_>0){const S=m-1;l(m,x,S)}}})})}return Object.assign(new ce,{positions:e,normals:e,uvs:t,indices:i})}uk({enforceActions:"never"});const iG=g,md=(a,e,t)=>new iG(a,e,t),Rf=2*Math.PI,sG=document.getElementById("renderCanvas"),Xg=new H(sG,!0,{preserveDrawingBuffer:!0,stencil:!0}),Yg=(a,e,t)=>Object.assign(new me(a,t),e),Wr=new Ee(Xg);Wr.clearColor=new Se(0,0,0,0);const $g=new zt("camera",.55*Rf,.15*Rf,3,md(0,0,0),Wr);$g.lowerRadiusLimit=2.1;$g.upperRadiusLimit=10;$g.attachControl(void 0,!0);new So("north",md(0,1,0),Wr);new So("south",md(0,-1,0),Wr);const ih=Ii.box(12),am=document.querySelector("#nSteps");Object.assign(am,{min:1,max:40,value:ih.get()});am.addEventListener("change",()=>{ih.set(Number.parseInt(am.value))});const rG=document.querySelector("label[for=nSteps]");ks(()=>rG.innerHTML=`# steps (${ih.get()})`);const ra=Ii.box("geodesics"),If=document.querySelector("#triangFn");If.innerHTML=["[babylon] sphere","[babylon] icosphere",...Object.keys(Lb)].filter(a=>a!=="collapsed").map(a=>`<option>${a}</option>`).join(`
