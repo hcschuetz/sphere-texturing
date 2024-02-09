@@ -87,7 +87,7 @@ It can be created like this:
   on the sphere.
 
 Various such subdivisions have been investigated in a
-[sister project](../lab/).
+[sibling project](../lab/).
 In the current application the triangulation methods from "geodesics"
 onward produce octaspheres.
 
@@ -123,7 +123,7 @@ from the nearest point on the sphere.
 
 Unfortunately I have not found an octahedral atlas on the web.
 So I have implemented a [conversion](src/OctaSprite.ts)
-from equirectangular maps to an octahedral atlas.
+from an equirectangular map to an octahedral atlas.
 
 Notice that the same octahedral atlas can be used for any of our octasphere
 triangulations.
@@ -261,4 +261,4 @@ must be weighed against the stronger map distortion.
 The ideal case would be to have the raw data (such as the
 [Nasa Earth Observations](https://neo.gsfc.nasa.gov/)) available as an
 octahedral or icosahedral atlas, which would avoid the texture deterioration
-imposed by the additional mapping step via the long/lat map.
+imposed by the additional mapping step via the lon/lat map.
