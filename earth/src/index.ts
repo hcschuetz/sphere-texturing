@@ -134,18 +134,15 @@ function updateSmooth(mesh: B.Mesh) {
   }
 }
 
-// We dispose old textures.  But can't we nevertheless just use M.computed(...)?
-let baseTexture = M.observable.box<B.Texture | null>(null);
-M.reaction(() => mapURL.get(), url => {
-  baseTexture.get()?.dispose();
-  baseTexture.set(Object.assign(
-    new B.Texture(url, scene), {
-      // Wrap around in east/west direction but not in north/south direction:
-      wrapU: B.Texture.WRAP_ADDRESSMODE,
-      wrapV: B.Texture.CLAMP_ADDRESSMODE,
-    }
-  ));
-}, {fireImmediately: true});
+let baseTexture = M.computed(() => {
+  const url = mapURL.get();
+  const tx = new B.Texture(url);
+  // Wrap around in east/west direction but not in north/south direction:
+  tx.wrapU = B.Texture.WRAP_ADDRESSMODE;
+  tx.wrapV = B.Texture.CLAMP_ADDRESSMODE;
+  M.when(() => mapURL.get() !== url, () => tx.dispose());
+  return tx;
+});
 
 const sphMat = createStandardMaterial("sphMat", {
   specularColor: new B.Color3(.2, .2, .2),
@@ -172,11 +169,12 @@ M.autorun(() => {
 const icoMat = createStandardMaterial("icoMat", {
   specularColor: new B.Color3(.2, .2, .2),
 }, scene);
-const icoSprite = M.observable.box<B.Nullable<B.Texture>>(null);
-M.reaction(() => baseTexture.get(), base => {
-  icoSprite.get()?.dispose();
-  icoSprite.set(!base ? null : createIcoSprite("icoSprite", 3 * 1024, base, scene));
-}, {fireImmediately: true});
+const icoSprite = M.computed(() => {
+  const base = baseTexture.get();
+  const spr = !base ? null : createIcoSprite("icoSprite", 3 * 1024, base, scene);
+  M.when(() => baseTexture.get() !== base, () => spr?.dispose());
+  return spr;
+});
 M.autorun(() => icoMat.diffuseTexture = icoSprite.get());
 M.autorun(() => icoMat.wireframe = displayMode.get() === "wireframe");
 
@@ -206,11 +204,12 @@ M.autorun(() => {
 const octaMat = createStandardMaterial("octaMat", {
   specularColor: new B.Color3(.2, .2, .2),
 }, scene);
-const octaSprite = M.observable.box<B.Nullable<B.Texture>>(null);
-M.reaction(() => baseTexture.get(), base => {
-  octaSprite.get()?.dispose();
-  octaSprite.set(!base ? null : createOctaSprite("octaSprite", 5000, base, scene));
-}, {fireImmediately: true});
+const octaSprite = M.computed(() => {
+  const base = baseTexture.get();
+  const spr = !base ? null : createOctaSprite("octaSprite", 5000, base, scene);
+  M.when(() => baseTexture.get() !== base, () => spr?.dispose())
+  return spr;
+});
 M.autorun(() => octaMat.diffuseTexture = octaSprite.get());
 M.autorun(() => octaMat.wireframe = displayMode.get() === "wireframe");
 
