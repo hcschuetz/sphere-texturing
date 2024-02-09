@@ -66,22 +66,6 @@
 </head>
 <body>
   <div class="controlPanel">
-    <label for="nSteps"># steps</label>
-    <input type="range" id="nSteps">
-
-    <label for="numberOfTriangles"># triangles</label>
-    <output id="numberOfTriangles"></output>
-
-    <label for="triangFn">triangulation method</label>
-    <select id="triangFn"></select>
-
-    <label for="displayMode">display mode</label>
-    <select id="displayMode">
-      <option>wireframe</option>
-      <option>polyhedron</option>
-      <option>smooth</option>
-    </select>
-
     <label for="mapURL" class="wide">map source (CORS-enabled, equirectangular)</label>
     <span class="wide" style="display: flex;">
       <input id="mapURL" style="flex-grow: 1;">
@@ -90,6 +74,22 @@
 
     <label for="mapURLExamples">select example map</label>
     <select id="mapURLExamples"></select>
+
+    <label for="triangFn">triangulation method</label>
+    <select id="triangFn"></select>
+
+    <label for="nSteps"># steps</label>
+    <input type="range" id="nSteps">
+
+    <label for="numberOfTriangles"># triangles</label>
+    <output id="numberOfTriangles"></output>
+
+    <label for="displayMode">display mode</label>
+    <select id="displayMode">
+      <option>wireframe</option>
+      <option>polyhedron</option>
+      <option>smooth</option>
+    </select>
   </div>
   <div class="info">
     <a href="https://github.com/hcschuetz/octasphere/tree/main/earth#readme"

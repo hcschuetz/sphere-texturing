@@ -1,3 +1,17 @@
+Sub-Projects
+------------
+
+This repository consists of these sub-projects:
+- Slides for a presentation on octasphere triangulations
+  ([source](./presentation/), [slides](https://hcschuetz.github.io/octasphere/presentation/dist/))
+- The "lab" project for experimenting with the triangulations
+  ([source](./lab/), [web app](https://hcschuetz.github.io/octasphere/lab/dist/))
+- The "earth" project for experimenting with texture mappings
+  ([source](./earth/), [web app](https://hcschuetz.github.io/octasphere/earth/dist/))
+
+Now for an explanation what this is all about:
+
+
 Triangulations of the Octasphere
 ================================
 

@@ -199,7 +199,7 @@ with wrapping enabled for both the `u` and `v` coordinate.
 
 Notice that the wrapped regions with `u >= 1` or `v >= 1` fit in the
 unused spaces on the other side of the texture.
-In the `v` direction there is even some "safety distance" `dv`
+In the `v` direction there is some "safety distance" `dv`
 so that triangles 0 to 4 will not interfere
 with triangles 15 to 19 due to rounding/interpolation.
 No safety distance is needed in the `u` direction
@@ -245,8 +245,8 @@ Choices in the "display mode" menu:
 Two triangulation methods have not yet been mentioned:
 - "flat" places vertices on the octahedron face rather than the sphere.
 - "sines" is an intermediate (non-spherical) placement.
-  It is explaind together with the other octahedral triangulations
-  in the [presentation](../presentation/) sub-project.
+  It is explained together with the other octahedral triangulations
+  in the [outer README](../?tab=readme-ov-file#sine-based-mapping).
 
 
 Conclusion and Outlook
