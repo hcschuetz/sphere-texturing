@@ -9,16 +9,21 @@ an icosphere and a latitude/longitude sphere.
 Input Data
 ----------
 
-We start with an Earth map (or a map of another spherical body) in
-equirectangular projection.  That is, parallels are mapped to equidistant
-horizontal lines and meridians are mapped to equidistant vertical lines.
-(Usually also the scales in the north/south and east/west directions agree
+We start with an Earth map (or a map of another sphere) using
+equirectangular projection.
+That is,
+meridians are mapped to equidistant vertical lines and
+parallels are mapped to equidistant horizontal lines.
+The map is expected to cover the entire sphere
+vertically 180° from pole to pole and
+horizontally 360° around the sphere.
+Frequently also the scales in the north/south and east/west directions agree
 at the equator, but we do not depend on this condition as textures are anyway
-accessed with `uv` coordinates normalized to the range `[0..1]x[0..1]`.)
+accessed with `uv` coordinates normalized to the range `[0..1]x[0..1]`.
 
-We start with this projection because it is used by many maps on the web,
+We start with this projection because it is used by various maps on the web,
 in particular at [Nasa Earth Observations](https://neo.gsfc.nasa.gov/)
-and in the [Wikipedia Commons](https://commons.wikimedia.org/wiki/Main_Page).
+and in the [Wikipedia Commons](https://commons.wikimedia.org/w/index.php?search=equirectangular+projection&title=Special:MediaSearch&go=Go&type=image).
 
 You can select an example map in the menu or enter the URL of an image file
 in the text-input field.

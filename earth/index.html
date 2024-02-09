@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Octasphere</title>
+  <title>Sphere Texturing</title>
   <script type="module" src="src/index.ts"></script>
   <style>
     body {
@@ -26,19 +26,20 @@
     #renderCanvas:focus {
       outline: none;
     }
-    .controlPanel, .outputs {
+    .controlPanel {
       z-index: 1;
       position: fixed;
+      top: 20px;
       left: 20px;
       display: grid;
       grid-template-columns: auto auto;
       column-gap: .5em;
       row-gap: 1ex;
     }
-    .controlPanel {
-      top: 20px;
-    }
-    .outputs {
+    .info {
+      z-index: 1;
+      position: fixed;
+      left: 20px;
       bottom: 20px;
     }
     .wide {
@@ -46,9 +47,6 @@
     }
     label, output {
       padding: .3vw 0;
-    }
-    #nSteps {
-      width: 14em;
     }
     #mapLink {
       text-decoration: none;
@@ -71,6 +69,9 @@
     <label for="nSteps"># steps</label>
     <input type="range" id="nSteps">
 
+    <label for="numberOfTriangles"># triangles</label>
+    <output id="numberOfTriangles"></output>
+
     <label for="triangFn">triangulation method</label>
     <select id="triangFn"></select>
 
@@ -90,9 +91,10 @@
     <label for="mapURLExamples">select example map</label>
     <select id="mapURLExamples"></select>
   </div>
-  <div class="outputs">
-    <label for="numberOfTriangles"># triangles</label>
-    <output id="numberOfTriangles"></output>
+  <div class="info">
+    <a href="https://github.com/hcschuetz/octasphere/tree/main/earth#readme"
+      target="_blank"
+    >Explanations</a>
   </div>
   <canvas id="renderCanvas"></canvas>
 </body>
