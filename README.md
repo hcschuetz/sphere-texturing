@@ -2,7 +2,7 @@ Sub-Projects
 ------------
 
 This repository consists of these sub-projects:
-- Slides for a presentation on octasphere triangulations
+- A presentation on octasphere triangulations
   ([source](./presentation/), [slides](https://hcschuetz.github.io/octasphere/presentation/dist/))
 - The "lab" project for experimenting with the triangulations
   ([source](./lab/), [web app](https://hcschuetz.github.io/octasphere/lab/dist/))
