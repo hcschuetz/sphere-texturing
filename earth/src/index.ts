@@ -149,10 +149,8 @@ M.reaction(() => mapURL.get(), url => {
 
 const sphMat = createStandardMaterial("sphMat", {
   specularColor: new B.Color3(.2, .2, .2),
-  transparencyMode: B.Material.MATERIAL_ALPHABLEND,
 }, scene);
 M.autorun(() => sphMat.diffuseTexture = baseTexture.get());
-M.autorun(() => sphMat.alpha = Number(triangFn.get() === "[babylon] sphere"));
 M.autorun(() => sphMat.wireframe = displayMode.get() === "wireframe");
 
 const sph = new B.Mesh("sph", scene);
@@ -173,7 +171,6 @@ M.autorun(() => {
 
 const icoMat = createStandardMaterial("icoMat", {
   specularColor: new B.Color3(.2, .2, .2),
-  transparencyMode: B.Material.MATERIAL_ALPHABLEND,
 }, scene);
 const icoSprite = M.observable.box<B.Nullable<B.Texture>>(null);
 M.reaction(() => baseTexture.get(), base => {
@@ -181,7 +178,6 @@ M.reaction(() => baseTexture.get(), base => {
   icoSprite.set(!base ? null : createIcoSprite("icoSprite", 3 * 1024, base, scene));
 }, {fireImmediately: true});
 M.autorun(() => icoMat.diffuseTexture = icoSprite.get());
-M.autorun(() => icoMat.alpha = Number(triangFn.get() === "[babylon] icosphere"));
 M.autorun(() => icoMat.wireframe = displayMode.get() === "wireframe");
 
 const icoSphere = new B.Mesh("icoSphere");
@@ -209,7 +205,6 @@ M.autorun(() => {
 
 const octaMat = createStandardMaterial("octaMat", {
   specularColor: new B.Color3(.2, .2, .2),
-  transparencyMode: B.Material.MATERIAL_ALPHABLEND,
 }, scene);
 const octaSprite = M.observable.box<B.Nullable<B.Texture>>(null);
 M.reaction(() => baseTexture.get(), base => {
@@ -217,7 +212,6 @@ M.reaction(() => baseTexture.get(), base => {
   octaSprite.set(!base ? null : createOctaSprite("octaSprite", 5000, base, scene));
 }, {fireImmediately: true});
 M.autorun(() => octaMat.diffuseTexture = octaSprite.get());
-M.autorun(() => octaMat.alpha = Number(!triangFn.get().startsWith("[")));
 M.autorun(() => octaMat.wireframe = displayMode.get() === "wireframe");
 
 const octaSphere = new B.Mesh("octaSphere");
@@ -253,6 +247,18 @@ M.autorun(() => {
 // spriteDisplay.rotate(v3(0,1,0), TAU/2);
 // spriteDisplay.material = octaMat;
 // spriteDisplay.parent = octaSphere;
+
+const currentMesh = M.computed(() => {
+  switch (triangFn.get()) {
+    case "[babylon] sphere": return sph;
+    case "[babylon] icosphere": return icoSphere;
+    default: return octaSphere;
+  }
+});
+
+M.autorun(() => [sph, icoSphere, octaSphere].forEach(mesh => {
+  mesh.isVisible = mesh === currentMesh.get();
+}));
 
 
 engine.runRenderLoop(() => scene.render());
