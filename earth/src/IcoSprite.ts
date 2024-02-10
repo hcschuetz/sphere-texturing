@@ -5,36 +5,24 @@ import * as G from "gl-matrix";
 const TAU = 2 * Math.PI;
 
 
-// Extract coordinate mappings from a Babylon icosphere without subdivisions:
-// - uv ==> per-face barycentric
-// - per-face barycentric ==> xyz (= position)
+// Get uvs and positions from a Babylon icosphere without subdivisions
 const ico = B.CreateIcoSphereVertexData({subdivisions: 1});
-const uv2bary = Array.from({length: 20*3*3}, () => 0);
-const bary2xyz = Array.from({length: 20*3*3}, () => 0);
+const uvs = ico.uvs!;
+const positions = [...ico.positions!];
 
-for (let faceIdx = 0; faceIdx < 20; faceIdx++) {
-  const ABC_uv1 = new Float32Array(3*3);
-  const ABC_xyz = new Float32Array(3*3);
-
-  for (let corner = 0; corner < 3; corner++){
-    const vtxIdx = 3*faceIdx + corner;
-
-    ABC_uv1[corner * 3 + 0] = ico.uvs![vtxIdx*2 + 0];
-    ABC_uv1[corner * 3 + 1] = ico.uvs![vtxIdx*2 + 1];
-    ABC_uv1[corner * 3 + 2] = 1;
-
-    ABC_xyz[corner * 3 + 0] = ico.positions![vtxIdx*3 + 0];
-    ABC_xyz[corner * 3 + 1] = ico.positions![vtxIdx*3 + 1];
-    ABC_xyz[corner * 3 + 2] = ico.positions![vtxIdx*3 + 2];
-  }
-
-  const ABC_uv1_inv = G.mat3.invert(new Float32Array(3*3), ABC_uv1);
-
-  for (let i = 0; i < 3*3; i++) {
-    uv2bary[faceIdx * (3*3) + i] = ABC_uv1_inv[i];
-    bary2xyz[faceIdx * (3*3) + i] = ABC_xyz[i];
-  }
+// For each triangle, invert the matrix of uv coordinates (extended with ones):
+const uv12bary: number[] = [];
+for (let offset = 0; offset < uvs.length;) {
+  const uv1Matrix = Float32Array.of(
+    // u           v              1
+    uvs[offset++], uvs[offset++], 1, // column for vertex 0
+    uvs[offset++], uvs[offset++], 1, // column for vertex 1
+    uvs[offset++], uvs[offset++], 1, // column for vertex 2
+  );
+  const uv1MatrixInv = G.mat3.invert(new Float32Array(9), uv1Matrix);
+  uv12bary.push(...uv1MatrixInv);
 }
+
 
 // Apply the following coordinate mappings
 // - uv ==> barycentric (per face)
@@ -51,19 +39,21 @@ B.Effect.ShadersStore.IcoSpriteFragmentShader = `
   // Apparently ProceduralTexture does not support passing arrays of vectors or
   // matrices as uniforms.  So we pass arrays of floats and extract vectors and
   // matrices as needed.
-  uniform /* mat3[20] */ float[180] uv2bary;
-  uniform /* vec2[20] */ float[180] bary2xyz;
+  uniform /* mat3[20] */ float[180] uv12bary;
+  uniform /* vec2[20] */ float[180] positions;
   uniform sampler2D base;
 
   void main(void) {
     int f = -1;
     float fDist = 10000.; // actually infinity
     vec3 fBary;
+
+    int offset = 0;
     for (int i = 0; i < 20; i++) {
       mat3 Mbary = mat3(
-        uv2bary[i*9+0], uv2bary[i*9+1], uv2bary[i*9+2],
-        uv2bary[i*9+3], uv2bary[i*9+4], uv2bary[i*9+5],
-        uv2bary[i*9+6], uv2bary[i*9+7], uv2bary[i*9+8]
+        uv12bary[offset++], uv12bary[offset++], uv12bary[offset++],
+        uv12bary[offset++], uv12bary[offset++], uv12bary[offset++],
+        uv12bary[offset++], uv12bary[offset++], uv12bary[offset++]
       );
       vec3 bary = Mbary * vec3(vUV, 1.);
       vec3 edgeDists = max(-bary, 0.);
@@ -93,10 +83,11 @@ B.Effect.ShadersStore.IcoSpriteFragmentShader = `
     //   return;
     // }
 
+    offset = f * 9;
     mat3 Mxyz = mat3(
-      bary2xyz[f*9+0], bary2xyz[f*9+1], bary2xyz[f*9+2],
-      bary2xyz[f*9+3], bary2xyz[f*9+4], bary2xyz[f*9+5],
-      bary2xyz[f*9+6], bary2xyz[f*9+7], bary2xyz[f*9+8]
+      positions[offset++], positions[offset++], positions[offset++],
+      positions[offset++], positions[offset++], positions[offset++],
+      positions[offset++], positions[offset++], positions[offset++]
     );
     vec3 xyz = Mxyz * vec3(fBary);
 
@@ -122,8 +113,8 @@ const createIcoSprite = (
   name: string, size: number, base: B.Texture, scene: B.Scene
 ): B.Texture =>
   new B.ProceduralTexture(name, size, "IcoSprite", scene)
-  .setFloats("bary2xyz", bary2xyz)
-  .setFloats("uv2bary", uv2bary)
+  .setFloats("uv12bary", uv12bary)
+  .setFloats("positions", positions)
   .setTexture("base", base);
 
 export default createIcoSprite;
