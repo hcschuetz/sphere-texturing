@@ -189,7 +189,7 @@ Assign `uv` coordinates to the common icosahedron net like this
 0.5 * (1 - dv) ---       X-------X-------X-------X-------X------->
                           \ 15  / \ 16  / \ 17  / \ 18  / \ 19  /
                            \   /   \   /   \   /   \   /   \   /
-                            \ /     \ /     \ /     \ /     \ / 
+                            \ /     \ /     \ /     \ /     \ /
 0.0 * (1 - dv) ---           V       V       V       V       V
  
                      |   |   |   |   |   |   |   |   |   |   |   |
