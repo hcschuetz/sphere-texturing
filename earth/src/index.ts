@@ -4,7 +4,6 @@ import * as T from "../lib/triangulation";
 import createIcoSprite from "./IcoSprite";
 import { createOctaSprite } from "./OctaSprite";
 import { createOctaSphereVertexData } from "./OctaSphere";
-// import { log } from "./debug";
 
 M.configure({enforceActions: "never"});
 
@@ -128,7 +127,7 @@ displayModeElem.addEventListener("change", () => {
 });
 
 // -----------------------------------------------------------------------------
-// Sprites
+// Textures/Sprites
 
 let baseTexture = M.computed(() => {
   const url = mapURL.get();
@@ -154,53 +153,53 @@ const icoSprite = M.computed(() => {
   return spr;
 });
 
-// -----------------------------------------------------------------------------
-// Sprite Debugging
+const currentTexture = M.computed(() => {
+  switch (triangFn.get()) {
+    case "[babylon] sphere"   : return baseTexture.get();
+    case "[babylon] icosphere": return icoSprite.get();
+    default:                    return octaSprite.get();
+  }
+});
 
-function showSprite(txBox: M.IComputedValue<B.Nullable<B.Texture>>) {
+// -----------------------------------------------------------------------------
+// Texture/Sprite Debugging
+
+function showSprite() {
   const uvs = [[0, 0], [1, 0], [1, 1], [0, 1]];
-  const zoom = 2;
+  const zoom = 2 / 5000;
   M.autorun(() => {
-    const tx = txBox.get();
-    const sizeRatio = !tx ? 1 : tx.getSize().height / tx.getSize().width;
-    const rectangle =
-      new B.Mesh("sprite display", scene)
+    const tx = currentTexture.get();
+    if (!tx) {
+      return;
+    }
+    const {height, width} = tx.getSize();
+    const rectangle = new B.Mesh("sprite display", scene)
       .setIndices([[0, 1, 2], [0, 2, 3]].flat())
       .setVerticesData(B.VertexBuffer.PositionKind, uvs.flatMap(([u,v]) => [
         1.1,
-        (v - .5) * zoom * sizeRatio,
-        (u - .5) * zoom,
+        (v - .5) * height * zoom,
+        (u - .5) * width  * zoom,
       ]))
       .setVerticesData(B.VertexBuffer.UVKind, uvs.flat());
     rectangle.rotation = v3(0, TAU/2, 0);
     rectangle.material = createStandardMaterial("rectMat", {
       diffuseTexture: tx,
     }, scene);
+    M.when(() => currentTexture.get() !== tx, () => rectangle.dispose());
   });
 }
 
-// showSprite(octaSprite);
-// showSprite(icoSprite);
+// showSprite();
 
 // -----------------------------------------------------------------------------
-// Materials
+// Material
 
-const createMySphereMaterial = (
-  name: string,
-  textureBox: M.IComputedValue<B.Nullable<B.Texture>>,
-  scene?: B.Scene
-): B.StandardMaterial => {
-  const mat = createStandardMaterial(name, {
+const mat = createStandardMaterial("sphere mat", {
     specularColor: new B.Color3(.2, .2, .2),
   }, scene);
-  M.autorun(() => mat.diffuseTexture = textureBox.get());
-  M.autorun(() => mat.wireframe = displayMode.get() === "wireframe");  
-  return mat;
-}
 
-const sphMat = createMySphereMaterial("sphMat", baseTexture, scene);
-const icoMat = createMySphereMaterial("icoMat", icoSprite, scene);
-const octaMat = createMySphereMaterial("octaMat", octaSprite, scene);
+M.autorun(() => mat.diffuseTexture = currentTexture.get());
+M.autorun(() => mat.wireframe = displayMode.get() === "wireframe");
 
 // -----------------------------------------------------------------------------
 // Mesh
@@ -208,11 +207,11 @@ const octaMat = createMySphereMaterial("octaMat", octaSprite, scene);
 const smooth = M.computed(() => displayMode.get() !== "polyhedron");
 
 const mesh = new B.Mesh("sphere", scene);
+mesh.material = mat;
 M.autorun(() => {
   let vertexData: B.VertexData, material: B.Nullable<B.Material>;
   switch (triangFn.get()) {
     case "[babylon] sphere":
-      mesh.material = sphMat;
       vertexData = B.CreateSphereVertexData({
         diameter: 2,
         segments: nSteps.get()
@@ -220,14 +219,12 @@ M.autorun(() => {
       mesh.rotation = v3(TAU/2, 0, 0);
       break;
     case "[babylon] icosphere":
-      mesh.material = icoMat;
       vertexData = B.CreateIcoSphereVertexData({
         subdivisions: nSteps.get(),
       });
       mesh.rotation = v3(0, TAU/2, 0);
       break;
     default:
-      mesh.material = octaMat;
       vertexData = createOctaSphereVertexData(
         T.triangulationFns[triangFn.get()](nSteps.get())
       );
