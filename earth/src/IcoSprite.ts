@@ -11,9 +11,10 @@ const TAU = 2 * Math.PI;
 const ico = B.CreateIcoSphereVertexData({subdivisions: 1});
 const uv2bary = Array.from({length: 20*3*3}, () => 0);
 const bary2xyz = Array.from({length: 20*3*3}, () => 0);
+
 for (let faceIdx = 0; faceIdx < 20; faceIdx++) {
-  const ABC_uv1 = G.mat3.create();
-  const ABC_xyz = G.mat3.create();
+  const ABC_uv1 = new Float32Array(3*3);
+  const ABC_xyz = new Float32Array(3*3);
 
   for (let corner = 0; corner < 3; corner++){
     const vtxIdx = 3*faceIdx + corner;
@@ -27,7 +28,8 @@ for (let faceIdx = 0; faceIdx < 20; faceIdx++) {
     ABC_xyz[corner * 3 + 2] = ico.positions![vtxIdx*3 + 2];
   }
 
-  const ABC_uv1_inv = G.mat3.invert(G.mat3.create(), ABC_uv1);
+  const ABC_uv1_inv = G.mat3.invert(new Float32Array(3*3), ABC_uv1);
+
   for (let i = 0; i < 3*3; i++) {
     uv2bary[faceIdx * (3*3) + i] = ABC_uv1_inv[i];
     bary2xyz[faceIdx * (3*3) + i] = ABC_xyz[i];
