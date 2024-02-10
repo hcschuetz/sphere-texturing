@@ -99,7 +99,7 @@ B.Effect.ShadersStore.IcoSpriteFragmentShader = `
 
     // TODO take level of detail into account
     gl_FragColor = texture(base, vec2(
-      lon / ${TAU} + .5,
+      lon / ${TAU},
       lat / ${TAU/2} + .5
     ));
   }

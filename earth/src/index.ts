@@ -222,7 +222,6 @@ M.autorun(() => {
       vertexData = B.CreateIcoSphereVertexData({
         subdivisions: nSteps.get(),
       });
-      mesh.rotation = v3(0, TAU/2, 0);
       break;
     default:
       vertexData = createOctaSphereVertexData(
