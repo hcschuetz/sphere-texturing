@@ -94,8 +94,8 @@ B.Effect.ShadersStore.IcoSpriteFragmentShader = `
     // Actually we only need to scale y.  But would this really save time?
     xyz = normalize(xyz);
 
-    float lat = asin(xyz.y);
     float lon = atan(xyz.z, xyz.x);
+    float lat = asin(xyz.y);
 
     // TODO take level of detail into account
     gl_FragColor = texture(base, vec2(
