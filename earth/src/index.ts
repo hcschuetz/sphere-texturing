@@ -8,19 +8,14 @@ import { createOctaSphereVertexData } from "./OctaSphere";
 
 M.configure({enforceActions: "never"});
 
-// Abbreviations:
-type V3 = B.Vector3;
-const V3 = B.Vector3;
-const v3 = (x: number, y: number, z: number) => new V3(x, y, z);
+// -----------------------------------------------------------------------------
+// Abbreviations and Utilities
 
 const TAU = 2 * Math.PI;
 
-
-const canvas = document.getElementById('renderCanvas') as HTMLCanvasElement;
-const engine = new B.Engine(canvas, true, {
-  preserveDrawingBuffer: true,
-  stencil: true
-});
+type V3 = B.Vector3;
+const V3 = B.Vector3;
+const v3 = (x: number, y: number, z: number) => new V3(x, y, z);
 
 const createStandardMaterial = (
   name: string,
@@ -29,6 +24,15 @@ const createStandardMaterial = (
 ): B.StandardMaterial =>
   Object.assign(new B.StandardMaterial(name, scene), options);
 
+// -----------------------------------------------------------------------------
+// Set up engine/scene/camera/lighting
+
+const canvas = document.getElementById('renderCanvas') as HTMLCanvasElement;
+const engine = new B.Engine(canvas, true, {
+  preserveDrawingBuffer: true,
+  stencil: true
+});
+
 const scene = new B.Scene(engine);
 scene.clearColor = new B.Color4(0, 0, 0, 0);
 
@@ -36,7 +40,6 @@ const camera = new B.ArcRotateCamera("camera", .55 * TAU, .15 * TAU, 3, v3(0, 0,
 camera.lowerRadiusLimit = 2.1;
 camera.upperRadiusLimit = 10;
 camera.attachControl(undefined, true);
-
 
 // TODO make lights configurable
 
@@ -49,32 +52,8 @@ new B.HemisphericLight("north", v3(0, +1, 0), scene);
 new B.HemisphericLight("south", v3(0, -1, 0), scene);
 
 
-const nSteps = M.observable.box(12);
-const nStepsElem = document.querySelector("#nSteps") as HTMLInputElement;
-Object.assign(nStepsElem, {min: 1, max: 40, value: nSteps.get()});
-nStepsElem.addEventListener("change", () => {
-  nSteps.set(Number.parseInt(nStepsElem.value));
-});
-const nStepsLabel = document.querySelector("label[for=nSteps]")!;
-M.autorun(() => nStepsLabel.innerHTML = `# steps (${nSteps.get()})`);
-
-const triangFn = M.observable.box("geodesics");
-const triangFnElem = document.querySelector("#triangFn") as HTMLSelectElement;
-triangFnElem.innerHTML =
-  ["[babylon] sphere", "[babylon] icosphere", ...Object.keys(T.triangulationFns)]
-  .filter(name => name !== "collapsed")
-  .map(name => `<option>${name}</option>`).join("\n");
-triangFnElem.value = triangFn.get();
-triangFnElem.addEventListener("change", () => {
-  triangFn.set(triangFnElem.value);
-});
-
-const displayMode = M.observable.box("polyhedron");
-const displayModeElem = document.querySelector("#displayMode") as HTMLSelectElement;
-displayModeElem.value = displayMode.get();
-displayModeElem.addEventListener("change", () => {
-  displayMode.set(displayModeElem.value);
-});
+// -----------------------------------------------------------------------------
+// Configuration UI
 
 type URLExample = {name: string, url: string};
 
@@ -117,22 +96,39 @@ mapURLExamplesElem.addEventListener("change", () => {
   mapURL.set(mapURLElem.value = mapURLExamplesElem.value);
 });
 
+const triangFn = M.observable.box("geodesics");
+const triangFnElem = document.querySelector("#triangFn") as HTMLSelectElement;
+triangFnElem.innerHTML =
+  ["[babylon] sphere", "[babylon] icosphere", ...Object.keys(T.triangulationFns)]
+  .filter(name => name !== "collapsed")
+  .map(name => `<option>${name}</option>`).join("\n");
+triangFnElem.value = triangFn.get();
+triangFnElem.addEventListener("change", () => {
+  triangFn.set(triangFnElem.value);
+});
+
+const nSteps = M.observable.box(12);
+const nStepsElem = document.querySelector("#nSteps") as HTMLInputElement;
+Object.assign(nStepsElem, {min: 1, max: 40, value: nSteps.get()});
+nStepsElem.addEventListener("change", () => {
+  nSteps.set(Number.parseInt(nStepsElem.value));
+});
+const nStepsLabel = document.querySelector("label[for=nSteps]")!;
+M.autorun(() => nStepsLabel.innerHTML = `# steps (${nSteps.get()})`);
+
 const numberOfTrianglesElem = document.querySelector("#numberOfTriangles");
-const numberOfIndices = M.observable.box<number>(0);
-M.autorun(() => numberOfTrianglesElem!.textContent = (numberOfIndices.get() / 3).toFixed());
+const numberOfTriangles = M.observable.box<number>(0);
+M.autorun(() => numberOfTrianglesElem!.textContent = numberOfTriangles.get().toFixed());
 
+const displayMode = M.observable.box("polyhedron");
+const displayModeElem = document.querySelector("#displayMode") as HTMLSelectElement;
+displayModeElem.value = displayMode.get();
+displayModeElem.addEventListener("change", () => {
+  displayMode.set(displayModeElem.value);
+});
 
-
-const smooth = M.computed(() => displayMode.get() !== "polyhedron");
-function updateSmooth(mesh: B.Mesh) {
-  if (smooth.get()) {
-    mesh.updateVerticesData(B.VertexBuffer.NormalKind,
-      mesh.getVerticesData(B.VertexBuffer.PositionKind)!,
-    );
-  } else {
-    mesh.removeVerticesData(B.VertexBuffer.NormalKind);
-  }
-}
+// -----------------------------------------------------------------------------
+// Sprites
 
 let baseTexture = M.computed(() => {
   const url = mapURL.get();
@@ -144,121 +140,114 @@ let baseTexture = M.computed(() => {
   return tx;
 });
 
-const sphMat = createStandardMaterial("sphMat", {
-  specularColor: new B.Color3(.2, .2, .2),
-}, scene);
-M.autorun(() => sphMat.diffuseTexture = baseTexture.get());
-M.autorun(() => sphMat.wireframe = displayMode.get() === "wireframe");
-
-const sph = new B.Mesh("sph", scene);
-// TODO figure out why this rotation is needed:
-sph.rotate(v3(1,0,0), TAU/2);
-sph.material = sphMat;
-M.autorun(() => {
-  B.CreateSphereVertexData({
-    diameter: 2,
-    segments: nSteps.get()
-  }).applyToMesh(sph, true);
-  if (triangFn.get() === "[babylon] sphere") {
-    numberOfIndices.set(sph.getIndices()!.length);
-  }
-  updateSmooth(sph);
-});
-
-
-const icoMat = createStandardMaterial("icoMat", {
-  specularColor: new B.Color3(.2, .2, .2),
-}, scene);
-const icoSprite = M.computed(() => {
-  const base = baseTexture.get();
-  const spr = !base ? null : createIcoSprite("icoSprite", 3 * 1024, base, scene);
-  M.when(() => baseTexture.get() !== base, () => spr?.dispose());
-  return spr;
-});
-M.autorun(() => icoMat.diffuseTexture = icoSprite.get());
-M.autorun(() => icoMat.wireframe = displayMode.get() === "wireframe");
-
-const icoSphere = new B.Mesh("icoSphere");
-icoSphere.rotate(v3(0,1,0), TAU/2); // for analogy with the other spheres
-icoSphere.material = icoMat;
-M.autorun(() => {
-  B.CreateIcoSphereVertexData({
-    subdivisions: nSteps.get(),
-  }).applyToMesh(icoSphere, true);
-  if (triangFn.get() === "[babylon] icosphere") {
-    numberOfIndices.set(icoSphere.getIndices()!.length);
-  }
-  updateSmooth(icoSphere);
-});
-
-// // Debugging: Display the icoSprite in a square over the Pacific Ocean:
-// const uvs = [[0, 0], [1, 0], [1, 1], [0, 1]];
-// const spriteDisplay = new B.Mesh("sprite display", scene)
-//   .setIndices([[0, 1, 2], [0, 2, 3]].flat())
-//   .setVerticesData(B.VertexBuffer.PositionKind, uvs.flatMap(([u,v]) => [-1.3, v-.5, .5-u]))
-//   .setVerticesData(B.VertexBuffer.UVKind      , uvs.flat());
-// spriteDisplay.material = icoMat;
-// spriteDisplay.parent = icoSphere;
-
-
-const octaMat = createStandardMaterial("octaMat", {
-  specularColor: new B.Color3(.2, .2, .2),
-}, scene);
 const octaSprite = M.computed(() => {
   const base = baseTexture.get();
   const spr = !base ? null : createOctaSprite("octaSprite", 5000, base, scene);
   M.when(() => baseTexture.get() !== base, () => spr?.dispose())
   return spr;
 });
-M.autorun(() => octaMat.diffuseTexture = octaSprite.get());
-M.autorun(() => octaMat.wireframe = displayMode.get() === "wireframe");
 
-const octaSphere = new B.Mesh("octaSphere");
-octaSphere.material = octaMat;
+const icoSprite = M.computed(() => {
+  const base = baseTexture.get();
+  const spr = !base ? null : createIcoSprite("icoSprite", 3 * 1024, base, scene);
+  M.when(() => baseTexture.get() !== base, () => spr?.dispose());
+  return spr;
+});
+
+// -----------------------------------------------------------------------------
+// Sprite Debugging
+
+function showSprite(txBox: M.IComputedValue<B.Nullable<B.Texture>>) {
+  const uvs = [[0, 0], [1, 0], [1, 1], [0, 1]];
+  const zoom = 2;
+  M.autorun(() => {
+    const tx = txBox.get();
+    const sizeRatio = !tx ? 1 : tx.getSize().height / tx.getSize().width;
+    const rectangle =
+      new B.Mesh("sprite display", scene)
+      .setIndices([[0, 1, 2], [0, 2, 3]].flat())
+      .setVerticesData(B.VertexBuffer.PositionKind, uvs.flatMap(([u,v]) => [
+        1.1,
+        (v - .5) * zoom * sizeRatio,
+        (u - .5) * zoom,
+      ]))
+      .setVerticesData(B.VertexBuffer.UVKind, uvs.flat());
+    rectangle.rotation = v3(0, TAU/2, 0);
+    rectangle.material = createStandardMaterial("rectMat", {
+      diffuseTexture: tx,
+    }, scene);
+  });
+}
+
+// showSprite(octaSprite);
+// showSprite(icoSprite);
+
+// -----------------------------------------------------------------------------
+// Materials
+
+const createMySphereMaterial = (
+  name: string,
+  textureBox: M.IComputedValue<B.Nullable<B.Texture>>,
+  scene?: B.Scene
+): B.StandardMaterial => {
+  const mat = createStandardMaterial(name, {
+    specularColor: new B.Color3(.2, .2, .2),
+  }, scene);
+  M.autorun(() => mat.diffuseTexture = textureBox.get());
+  M.autorun(() => mat.wireframe = displayMode.get() === "wireframe");  
+  return mat;
+}
+
+const sphMat = createMySphereMaterial("sphMat", baseTexture, scene);
+const icoMat = createMySphereMaterial("icoMat", icoSprite, scene);
+const octaMat = createMySphereMaterial("octaMat", octaSprite, scene);
+
+// -----------------------------------------------------------------------------
+// Mesh
+
+const smooth = M.computed(() => displayMode.get() !== "polyhedron");
+
+const mesh = new B.Mesh("sphere", scene);
 M.autorun(() => {
-  createOctaSphereVertexData(
-    T.triangulationFns[triangFn.get()](nSteps.get())
-  ).applyToMesh(octaSphere, true);
-  if (!triangFn.get().startsWith("[")) {
-    numberOfIndices.set(octaSphere.getIndices()!.length);
-  }
-  updateSmooth(octaSphere);
-});
-
-// // Debugging: Display the octaSprite in a rectangle over the North Pole:
-// function sizeRatio(texture: B.Nullable<B.Texture>): number {
-//   if (!texture) {
-//     return 1;
-//   }
-//   const {width, height} = texture.getSize();
-//   return height / width;
-// }
-// const uvs = [[0, 0], [1, 0], [1, 1], [0, 1]];
-// const zoom = 2;
-// const spriteDisplay = new B.Mesh("sprite display", scene)
-//   .setIndices([[0, 1, 2], [0, 2, 3]].flat())
-//   .setVerticesData(B.VertexBuffer.PositionKind, uvs.flatMap(([u,v]) => [
-//     0,
-//     v * zoom * sizeRatio(octaSprite.get()) + 1.2,
-//     (u - .5) * zoom,
-//   ]))
-//   .setVerticesData(B.VertexBuffer.UVKind      , uvs.flat());
-// spriteDisplay.rotate(v3(0,1,0), TAU/2);
-// spriteDisplay.material = octaMat;
-// spriteDisplay.parent = octaSphere;
-
-const currentMesh = M.computed(() => {
+  let vertexData: B.VertexData, material: B.Nullable<B.Material>;
   switch (triangFn.get()) {
-    case "[babylon] sphere": return sph;
-    case "[babylon] icosphere": return icoSphere;
-    default: return octaSphere;
+    case "[babylon] sphere":
+      mesh.material = sphMat;
+      vertexData = B.CreateSphereVertexData({
+        diameter: 2,
+        segments: nSteps.get()
+      });
+      mesh.rotation = v3(TAU/2, 0, 0);
+      break;
+    case "[babylon] icosphere":
+      mesh.material = icoMat;
+      vertexData = B.CreateIcoSphereVertexData({
+        subdivisions: nSteps.get(),
+      });
+      mesh.rotation = v3(0, TAU/2, 0);
+      break;
+    default:
+      mesh.material = octaMat;
+      vertexData = createOctaSphereVertexData(
+        T.triangulationFns[triangFn.get()](nSteps.get())
+      );
+      break;
+  }
+  vertexData.applyToMesh(mesh, true);
+
+  numberOfTriangles.set(vertexData.indices!.length / 3);
+
+  // TODO Why doesn't this work anymore if we put it into a separate autorun?
+  if (smooth.get()) {
+    mesh.updateVerticesData(B.VertexBuffer.NormalKind,
+      mesh.getVerticesData(B.VertexBuffer.PositionKind)!,
+    );
+  } else {
+    mesh.removeVerticesData(B.VertexBuffer.NormalKind);
   }
 });
 
-M.autorun(() => [sph, icoSphere, octaSphere].forEach(mesh => {
-  mesh.isVisible = mesh === currentMesh.get();
-}));
-
+// -----------------------------------------------------------------------------
 
 engine.runRenderLoop(() => scene.render());
 
