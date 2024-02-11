@@ -38,12 +38,10 @@ for (let offset = 0; offset < uvs.length;) {
 B.Effect.ShadersStore.IcoSpriteFragmentShader = `
   varying vec2 vUV;
 
-  // Apparently ProceduralTexture does not support passing arrays of vectors or
-  // matrices as uniforms.  So we pass arrays of floats and extract vectors and
-  // matrices as needed.
-  uniform /* mat3[20] */ float[180] uv12bary;
-  uniform /* vec2[20] */ float[180] positions;
   uniform sampler2D base;
+
+  /* mat3[20] */ float uv12bary[180] = float[180](${uv12bary.map(val => val.toExponential()).join(", ")});
+  /* vec2[20] */ float positions[180] = float[180](${positions.map(val => val.toExponential()).join(", ")});
 
   void main(void) {
     int f = -1;
@@ -115,8 +113,6 @@ const createIcoSprite = (
   name: string, size: number, base: B.Texture, scene: B.Scene
 ): B.Texture =>
   new B.ProceduralTexture(name, size, "IcoSprite", scene)
-  .setFloats("uv12bary", uv12bary)
-  .setFloats("positions", positions)
   .setTexture("base", base);
 
 export default createIcoSprite;
