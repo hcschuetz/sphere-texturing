@@ -11912,7 +11912,6 @@ In order to be iterable, non-array objects must have a [Symbol.iterator]() metho
     float fDist = 10000.; // actually infinity
     vec3 fBary;
 
-    int offset = 0;
     for (int i = 0; i < 20; i++) {
       vec3 bary = uv12bary[i] * vec3(vUV, 1.);
       vec3 edgeDists = max(-bary, 0.);
