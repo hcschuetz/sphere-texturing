@@ -1,5 +1,4 @@
 import * as B from "@babylonjs/core";
-import * as G from "gl-matrix";
 
 
 const TAU = 2 * Math.PI;
@@ -10,16 +9,19 @@ const ico = B.CreateIcoSphereVertexData({subdivisions: 1});
 const uvs = ico.uvs!;
 const positions = [...ico.positions!];
 
-// For each triangle, invert the matrix of uv coordinates (extended with ones):
+// For each triangle, invert the matrix of uv coordinates (extended with ones,
+// and extended ):
 const uv12bary: number[] = [];
 for (let offset = 0; offset < uvs.length;) {
-  const uv1Matrix = Float32Array.of(
-    // u           v              1
-    uvs[offset++], uvs[offset++], 1, // column for vertex 0
-    uvs[offset++], uvs[offset++], 1, // column for vertex 1
-    uvs[offset++], uvs[offset++], 1, // column for vertex 2
+  const uv1MatrixInv = B.Matrix.GetAsMatrix3x3(
+    B.Matrix.FromValues(
+      // u           v        1
+      uvs[offset++], uvs[offset++], 1, 0,
+      uvs[offset++], uvs[offset++], 1, 0,
+      uvs[offset++], uvs[offset++], 1, 0,
+      0            , 0            , 0, 1,
+    ).invert()
   );
-  const uv1MatrixInv = G.mat3.invert(new Float32Array(9), uv1Matrix);
   uv12bary.push(...uv1MatrixInv);
 }
 

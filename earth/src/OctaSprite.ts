@@ -54,7 +54,6 @@ the barycentric face coordinates to longitude and latitude.)
 */
 
 import * as B from "@babylonjs/core";
-import * as G from "gl-matrix";
 
 
 const TAU = 2 * Math.PI;
@@ -78,23 +77,28 @@ const du = .01;
  * - Technically they make the matrix square and invertible.
  * - Their origin is from the condition that the barycentric coordinates are
  *   normalized, that is, `w + p + e = 1`.
+ * 
+ * Finally, the last row and column are there because Babylon seems to support
+ * only 4x4 matrices.
  */
-const wpe2uv1: G.mat3 = [
+const wpe2uv1 = B.Matrix.FromValues(
   // u      v  1
-  du      , 0, 1, // w
-  1/8     , 1, 1, // p
-  1/4 - du, 0, 1, // e
-  // The matrix is actually transposed because gl-matrix and WebGL use
+  du      , 0, 1, 0,// w
+  1/8     , 1, 1, 0, // p
+  1/4 - du, 0, 1, 0, // e
+  0       , 0, 0, 1,
+  // The matrix is actually transposed because Babylon and WebGL use
   // column-major order whereas source code is written in row-major order.
-];
+);
 
 // But actually we want to convert in the other direction.
 // `(u, v)` is expected to be in the northern half of quadrant 0.
 // Otherwise the coordinates need to be adjusted.
-const uv12wpe = G.mat3.invert(new Float32Array(9), wpe2uv1);
+const uv12wpe = wpe2uv1.invertToRef(new B.Matrix());
 
-// The barycentric coordinate p for the pole is actually not needed:
-const uv12we = [...uv12wpe].filter((_, i) => i % 3 !== 1);
+// Now drop the last row and column again.  Furthermore
+// the barycentric coordinate p for the pole is actually not needed:
+const uv12we = [...B.Matrix.GetAsMatrix3x3(uv12wpe)].filter((_, i) => i % 3 !== 1);
 
 
 B.Effect.ShadersStore.OctaSpriteFragmentShader = `
@@ -173,9 +177,8 @@ export function getUV(pos: B.Vector3, faceRef: B.Vector3): B.Vector2 {
   const scale = 1 / (x + y + z);
   x *= scale; y *= scale; z *= scale;
 
-  let [u, v] = G.vec3.transformMat3(
-    new Float32Array(3),
-    G.vec3.fromValues(x, y, z),
+  let {x: u, y: v} = B.Vector3.TransformCoordinates(
+    new B.Vector3(x, y, z),
     wpe2uv1,
   );
 
