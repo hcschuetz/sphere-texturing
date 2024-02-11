@@ -126,6 +126,13 @@ displayModeElem.addEventListener("change", () => {
   displayMode.set(displayModeElem.value);
 });
 
+const showTexture = M.observable.box(false);
+const showTextureElem = document.querySelector("#showTexture") as HTMLInputElement;
+showTextureElem.checked = showTexture.get();
+showTextureElem.addEventListener("change", () => {
+  showTexture.set(showTextureElem.checked);
+})
+
 // -----------------------------------------------------------------------------
 // Textures/Sprites
 
@@ -162,36 +169,6 @@ const currentTexture = M.computed(() => {
 });
 
 // -----------------------------------------------------------------------------
-// Texture/Sprite Debugging
-
-function showSprite() {
-  const uvs = [[0, 0], [1, 0], [1, 1], [0, 1]];
-  const zoom = 2 / 5000;
-  M.autorun(() => {
-    const tx = currentTexture.get();
-    if (!tx) {
-      return;
-    }
-    const {height, width} = tx.getSize();
-    const rectangle = new B.Mesh("sprite display", scene)
-      .setIndices([[0, 1, 2], [0, 2, 3]].flat())
-      .setVerticesData(B.VertexBuffer.PositionKind, uvs.flatMap(([u,v]) => [
-        1.1,
-        (v - .5) * height * zoom,
-        (u - .5) * width  * zoom,
-      ]))
-      .setVerticesData(B.VertexBuffer.UVKind, uvs.flat());
-    rectangle.rotation = v3(0, TAU/2, 0);
-    rectangle.material = createStandardMaterial("rectMat", {
-      diffuseTexture: tx,
-    }, scene);
-    M.when(() => currentTexture.get() !== tx, () => rectangle.dispose());
-  });
-}
-
-// showSprite();
-
-// -----------------------------------------------------------------------------
 // Material
 
 const mat = createStandardMaterial("sphere mat", {
@@ -200,6 +177,33 @@ const mat = createStandardMaterial("sphere mat", {
 
 M.autorun(() => mat.diffuseTexture = currentTexture.get());
 M.autorun(() => mat.wireframe = displayMode.get() === "wireframe");
+
+// -----------------------------------------------------------------------------
+// Texture/Sprite Debugging
+
+{
+  const uvs = [[0, 0], [1, 0], [1, 1], [0, 1]];
+  const rectangle =
+    new B.Mesh("sprite display", scene)
+    .setIndices([[0, 1, 2], [0, 2, 3]].flat())
+    .setVerticesData(B.VertexBuffer.UVKind, uvs.flat());
+  const zoom = 1 / 5000;
+  M.autorun(() => {
+    const {height, width} =
+      currentTexture.get()?.getSize() ?? {width: 1000, height: 1000};
+    rectangle.setVerticesData(B.VertexBuffer.PositionKind,
+      uvs.flatMap(([u,v]) => [
+        (u - .5) * width  * zoom,
+        (v - .5) * height * zoom,
+        1.05,
+      ]),
+      true,
+    );
+  });
+  rectangle.parent = camera;
+  rectangle.material = mat;
+  M.autorun(() => rectangle.isVisible = showTexture.get());
+}
 
 // -----------------------------------------------------------------------------
 // Mesh
