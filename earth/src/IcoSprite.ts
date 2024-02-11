@@ -7,11 +7,11 @@ const TAU = 2 * Math.PI;
 // Get uvs and positions from a Babylon icosphere without subdivisions
 const ico = B.CreateIcoSphereVertexData({subdivisions: 1});
 const uvs = ico.uvs!;
-const positions = [...ico.positions!];
+const positionsFlat = ico.positions!;
 
 // For each triangle, invert the matrix of uv coordinates (extended with ones,
 // and extended ):
-const uv12bary: number[] = [];
+const uv12bary: (number[] | Float32Array)[] = [];
 for (let offset = 0; offset < uvs.length;) {
   const uv1MatrixInv = B.Matrix.GetAsMatrix3x3(
     B.Matrix.FromValues(
@@ -22,7 +22,16 @@ for (let offset = 0; offset < uvs.length;) {
       0            , 0            , 0, 1,
     ).invert()
   );
-  uv12bary.push(...uv1MatrixInv);
+  uv12bary.push(uv1MatrixInv);
+}
+
+const positions: number[][] = [];
+for (let offset = 0; offset < positionsFlat.length;) {
+  positions.push([
+    positionsFlat[offset++], positionsFlat[offset++], positionsFlat[offset++],
+    positionsFlat[offset++], positionsFlat[offset++], positionsFlat[offset++],
+    positionsFlat[offset++], positionsFlat[offset++], positionsFlat[offset++],
+  ]);
 }
 
 
@@ -40,8 +49,8 @@ B.Effect.ShadersStore.IcoSpriteFragmentShader = `
 
   uniform sampler2D base;
 
-  /* mat3[20] */ float uv12bary[180] = float[180](${uv12bary.map(val => val.toExponential()).join(", ")});
-  /* vec2[20] */ float positions[180] = float[180](${positions.map(val => val.toExponential()).join(", ")});
+  mat3 uv12bary [20] = mat3[20](${uv12bary .map(values => `mat3(${values})`).join(",\n")});
+  mat3 positions[20] = mat3[20](${positions.map(values => `mat3(${values})`).join(",\n")});
 
   void main(void) {
     int f = -1;
@@ -50,12 +59,7 @@ B.Effect.ShadersStore.IcoSpriteFragmentShader = `
 
     int offset = 0;
     for (int i = 0; i < 20; i++) {
-      mat3 Mbary = mat3(
-        uv12bary[offset++], uv12bary[offset++], uv12bary[offset++],
-        uv12bary[offset++], uv12bary[offset++], uv12bary[offset++],
-        uv12bary[offset++], uv12bary[offset++], uv12bary[offset++]
-      );
-      vec3 bary = Mbary * vec3(vUV, 1.);
+      vec3 bary = uv12bary[i] * vec3(vUV, 1.);
       vec3 edgeDists = max(-bary, 0.);
       float dist = edgeDists.x + edgeDists.y + edgeDists.z;
       if (dist < fDist) {
@@ -83,13 +87,7 @@ B.Effect.ShadersStore.IcoSpriteFragmentShader = `
     //   return;
     // }
 
-    offset = f * 9;
-    mat3 Mxyz = mat3(
-      positions[offset++], positions[offset++], positions[offset++],
-      positions[offset++], positions[offset++], positions[offset++],
-      positions[offset++], positions[offset++], positions[offset++]
-    );
-    vec3 xyz = Mxyz * vec3(fBary);
+    vec3 xyz = positions[f] * vec3(fBary);
 
     // Actually we only need to scale y.  But would this really save time?
     xyz = normalize(xyz);
