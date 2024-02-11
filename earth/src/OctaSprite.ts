@@ -98,7 +98,7 @@ const uv12wpe = wpe2uv1.invertToRef(new B.Matrix());
 
 // Now drop the last row and column again.  Furthermore
 // the barycentric coordinate p for the pole is actually not needed:
-const uv12we = [...B.Matrix.GetAsMatrix3x3(uv12wpe)].filter((_, i) => i % 3 !== 1);
+const uv12we = B.Matrix.GetAsMatrix3x3(uv12wpe).filter((_, i) => i % 3 !== 1);
 
 
 B.Effect.ShadersStore.OctaSpriteFragmentShader = `
