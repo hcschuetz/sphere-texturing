@@ -87,18 +87,15 @@ B.Effect.ShadersStore.IcoSpriteFragmentShader = `
     //   return;
     // }
 
-    vec3 xyz = positions[f] * vec3(fBary);
-
-    // Actually we only need to scale y.  But would this really save time?
-    xyz = normalize(xyz);
-
-    float lon = atan(xyz.z, xyz.x);
-    float lat = asin(xyz.y);
+    // Actually we only need to scale y as the atan function
+    // only cares about the ratio of z an x.
+    // But would this really save time?
+    vec3 position = normalize(positions[f] * fBary);
 
     // TODO take level of detail into account
     gl_FragColor = texture(base, vec2(
-      lon / ${TAU},
-      lat / ${TAU/2} + .5
+      atan(position.z, position.x) * ${1/TAU},
+      asin(position.y) * ${2/TAU} + .5
     ));
   }
 `;
