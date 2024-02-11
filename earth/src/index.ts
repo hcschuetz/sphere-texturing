@@ -215,8 +215,7 @@ M.autorun(() => {
       vertexData = B.CreateSphereVertexData({
         diameter: 2,
         segments: nSteps.get()
-      });
-      mesh.rotation = v3(TAU/2, 0, 0);
+      }).transform(B.Matrix.RotationX(TAU/2));
       break;
     case "[babylon] icosphere":
       vertexData = B.CreateIcoSphereVertexData({
