@@ -155,7 +155,7 @@ const octaSprite = M.computed(() => {
 
 const icoSprite = M.computed(() => {
   const base = baseTexture.get();
-  const spr = !base ? null : createIcoSprite("icoSprite", 3 * 1024, base, scene);
+  const spr = !base ? null : createIcoSprite("icoSprite", 2 * 1024, base, scene);
   M.when(() => baseTexture.get() !== base, () => spr?.dispose());
   return spr;
 });
