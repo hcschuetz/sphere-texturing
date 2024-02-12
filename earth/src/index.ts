@@ -138,7 +138,7 @@ showTextureElem.addEventListener("change", () => {
 
 let baseTexture = M.computed(() => {
   const url = mapURL.get();
-  const tx = new B.Texture(url);
+  const tx = new B.Texture(url, scene, true);
   // Wrap around in east/west direction but not in north/south direction:
   tx.wrapU = B.Texture.WRAP_ADDRESSMODE;
   tx.wrapV = B.Texture.CLAMP_ADDRESSMODE;
