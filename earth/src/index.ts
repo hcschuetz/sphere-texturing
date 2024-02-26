@@ -4,6 +4,7 @@ import * as T from "../lib/triangulation";
 import createIcoSprite from "./IcoSprite";
 import { createOctaSprite } from "./OctaSprite";
 import { createOctaSphereVertexData } from "./OctaSphere";
+import * as MyIco from "./MyIcoSphere";
 
 M.configure({enforceActions: "never"});
 
@@ -98,7 +99,12 @@ mapURLExamplesElem.addEventListener("change", () => {
 const triangFn = M.observable.box("geodesics");
 const triangFnElem = document.querySelector("#triangFn") as HTMLSelectElement;
 triangFnElem.innerHTML =
-  ["[babylon] sphere", "[babylon] icosphere", ...Object.keys(T.triangulationFns)]
+  [
+    "[babylon] sphere",
+    "[babylon] icosphere",
+    "[my] icosphere",
+    ...Object.keys(T.triangulationFns)
+  ]
   .filter(name => name !== "collapsed")
   .map(name => `<option>${name}</option>`).join("\n");
 triangFnElem.value = triangFn.get();
@@ -160,10 +166,18 @@ const icoSprite = M.computed(() => {
   return spr;
 });
 
+const myIcoSprite = M.computed(() => {
+  const base = baseTexture.get();
+  const spr = !base ? null : MyIco.createIcoSprite("myIcoSprite", 3600, base, scene);
+  M.when(() => baseTexture.get() !== base, () => spr?.dispose());
+  return spr;
+});
+
 const currentTexture = M.computed(() => {
   switch (triangFn.get()) {
     case "[babylon] sphere"   : return baseTexture.get();
     case "[babylon] icosphere": return icoSprite.get();
+    case "[my] icosphere"     : return myIcoSprite.get();
     default:                    return octaSprite.get();
   }
 });
@@ -225,6 +239,9 @@ M.autorun(() => {
       vertexData = B.CreateIcoSphereVertexData({
         subdivisions: nSteps.get(),
       });
+      break;
+    case "[my] icosphere":
+      vertexData = MyIco.createIcoVertices(nSteps.get());
       break;
     default:
       vertexData = createOctaSphereVertexData(
