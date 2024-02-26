@@ -242,6 +242,8 @@ Choices in the "display mode" menu:
   provided the material has some specular reflectivity
   and there is appropriate lighting.
 
+To see a flat view of the texture check "show flat texture".
+
 Two triangulation methods have not yet been mentioned:
 - "flat" places vertices on the octahedron face rather than the sphere.
 - "sines" is an intermediate (non-spherical) placement.
