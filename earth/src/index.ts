@@ -215,7 +215,12 @@ M.autorun(() => mat.wireframe = displayMode.get() === "wireframe");
     );
   });
   rectangle.parent = camera;
-  rectangle.material = mat;
+  const rectMat = createStandardMaterial("sprite disp mat", {
+    diffuseColor: B.Color3.Black(),
+    specularColor: B.Color3.Black(),
+  }, scene);
+  rectangle.material = rectMat;
+  M.autorun(() => rectMat.emissiveTexture = currentTexture.get());
   M.autorun(() => rectangle.isVisible = showTexture.get());
 }
 
