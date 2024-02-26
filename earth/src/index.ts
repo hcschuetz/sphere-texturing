@@ -74,6 +74,10 @@ const urlExamples: URLExample[] = [
     name: "Earth with Tissot indicatrix",
     url: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Plate_Carr%C3%A9e_with_Tissot%27s_Indicatrices_of_Distortion.svg/2560px-Plate_Carr%C3%A9e_with_Tissot%27s_Indicatrices_of_Distortion.svg.png",
   },
+  {
+    name: "Earth Elevation",
+    url: "https://upload.wikimedia.org/wikipedia/commons/9/93/Elevation.jpg",
+  }
 ]
 
 const mapURL = M.observable.box(urlExamples[0].url);
