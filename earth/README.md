@@ -149,15 +149,19 @@ Icospheres
 ----------
 
 All the considerations about octaspheres can be carried over to icospheres.
+But the icosphere code here differs from the octasphere code in several aspects.
 
-But our icosphere code differs from the octasphere code in several aspects:
-- Instead of implementing our own icosphere,
-  we use the implementation provided by Babylon.js.
-  (In the application select triangulation method "[babylon] icosphere".)
+There are actually two independent icosphere implementations:
+- "[babylon] icosphere" uses the icosphere implementation
+  provided by Babylon.js.
+- "[my] icosphere" uses a home-grown icosphere implementation.
 
-- That implementation does not support multiple sub-triangulation methods
-  for the icosahedron faces.  The only supported sub-triangulation is
-  analogous to the "geodesics" subtriangulation for octaspheres.
+While we could implement a variety of sub-triangulation methods for the
+icosahedron faces, only the geodesic method is actually supported.
+
+The two icosphere implementations need different sprite-sheet layouts.
+Therefore I have implemented separate conversions from equirectangular maps
+to the two sprite-sheet layouts.
 
 - Our octahedral atlas has a quite regular layout, which makes it easy to
   find the appropriate map (= sprite) for a given `uv` coordinate pair.
@@ -171,44 +175,13 @@ But our icosphere code differs from the octasphere code in several aspects:
   longitude/latitude coordinates of an equirectangular map
   searches through the maps/sprites for the appropriate one.
 
+- With modern graphics hardware we can replace the irregular
+  atlas/sprite sheet layout for icospheres with a non-square layout
+  that is more regular and thus easier to understand and to handle.
+  It is also more space-efficient.
 
-With modern graphics hardware we could replace the irregular
-atlas/sprite sheet layout for icospheres with a regular (but non-square) one.
-This layout would be easier to understand and easier to deal with.
-
-Assign `uv` coordinates to the common icosahedron net like this
-```
-1.5 * (1 - dv) ---       .       .       .       .       .
-                        / \     / \     / \     / \     / \
-                       /   \   /   \   /   \   /   \   /   \
-                      /  0  \ /  1  \ /  2  \ /  3  \ /  4  \
-1.0 * (1 - dv) ---   <-------X-------X-------X-------X-------X
-                      \  5  / \  6  / \  7  / \  8  / \  9  / \
-                       \   /   \   /   \   /   \   /   \   /   \
-                        \ / 10  \ / 11  \ / 12  \ / 13  \ / 14  \
-0.5 * (1 - dv) ---       X-------X-------X-------X-------X------->
-                          \ 15  / \ 16  / \ 17  / \ 18  / \ 19  /
-                           \   /   \   /   \   /   \   /   \   /
-                            \ /     \ /     \ /     \ /     \ /
-0.0 * (1 - dv) ---           V       V       V       V       V
- 
-                     |   |   |   |   |   |   |   |   |   |   |   |
-                    0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0 1.1
-```
-with wrapping enabled for both the `u` and `v` coordinate.
-
-Notice that the wrapped regions with `u >= 1` or `v >= 1` fit in the
-unused spaces on the other side of the texture.
-In the `v` direction there is some "safety distance" `dv`
-so that triangles 0 to 4 will not interfere
-with triangles 15 to 19 due to rounding/interpolation.
-No safety distance is needed in the `u` direction
-since triangles 14 and 5 are adjacent on the icosahedron.
-
-This way the entire rectangle is used for map data
-except for the small safety gap.
-The width/height ratio of the texture should be chosen in such a way that the
-triangles are approximately equilateral.
+  This layout is used by the home-grown icosphere implementation.
+  See [./MyIcoSphere.md](./MyIcoSphere.md) for details.
 
 
 More Notes on the Application
