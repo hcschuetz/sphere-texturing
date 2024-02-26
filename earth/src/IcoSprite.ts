@@ -3,44 +3,40 @@ import * as B from "@babylonjs/core";
 
 const TAU = 2 * Math.PI;
 
-
-// Get uvs and positions from a Babylon icosphere without subdivisions
-const ico = B.CreateIcoSphereVertexData({subdivisions: 1});
-const uvs = ico.uvs!;
-const positionsFlat = ico.positions!;
-
-// For each triangle, invert the matrix of uv coordinates (extended with ones,
-// and extended ):
-const uv12bary: (number[] | Float32Array)[] = [];
-for (let offset = 0; offset < uvs.length;) {
-  const uv1MatrixInv = B.Matrix.GetAsMatrix3x3(
+// Given the `uv` coordinates of three triangle vertices, return a matrix
+// mapping `(u, v, 1)` to normalized barycentric coordinates for the triangle.
+const uv12baryMatrix = ([u0, v0, u1, v1, u2, v2]: B.FloatArray) =>
+  B.Matrix.GetAsMatrix3x3(
     B.Matrix.FromValues(
-      // u           v        1
-      uvs[offset++], uvs[offset++], 1, 0,
-      uvs[offset++], uvs[offset++], 1, 0,
-      uvs[offset++], uvs[offset++], 1, 0,
-      0            , 0            , 0, 1,
+      u0, v0, 1, 0,
+      u1, v1, 1, 0,
+      u2, v2, 1, 0,
+      0 , 0 , 0, 1,
     ).invert()
   );
-  uv12bary.push(uv1MatrixInv);
-}
 
-const positions: number[][] = [];
-for (let offset = 0; offset < positionsFlat.length;) {
-  positions.push([
-    positionsFlat[offset++], positionsFlat[offset++], positionsFlat[offset++],
-    positionsFlat[offset++], positionsFlat[offset++], positionsFlat[offset++],
-    positionsFlat[offset++], positionsFlat[offset++], positionsFlat[offset++],
-  ]);
-}
+// For the sprite layout take uv and position data from a Babylon icosphere
+// without subdivisions, that is, a plain icosahedron.
+const ico = B.CreateIcoSphereVertexData({subdivisions: 1});
+
+// The following code assumes that the ico vertex data is not indexed or uses
+// indices [0, 1, ..., 59].
+
+const uv12bary = Array.from({length: 20}, (_, i) =>
+  uv12baryMatrix(ico.uvs!.slice(i * 6, (i + 1) * 6))
+);
+
+const positions = Array.from({length: 20}, (_, i) =>
+  ico.positions!.slice(i * 9, (i + 1) * 9)
+);
 
 
-// Apply the following coordinate mappings
-// - uv ==> barycentric (per face)
+// Apply the following coordinate mappings:
+// - uv ==> barycentric (for all faces)
 // - select the appropriate face
 // - barycentric ==> xyz on icosahedron face
-// - xyz on icosahedron face ==> xyz on sphere
-// - xyz ==> longitude/latitude
+// - position on icosahedron face ==> position on sphere
+// - position ==> longitude/latitude
 // - longitude/latitude ==> [0..1]^2
 // At this position look up the base texture color and return it as the color
 // for position (u, v) in the sprite.
