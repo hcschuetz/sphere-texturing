@@ -83,7 +83,7 @@ const du = .01;
  */
 const wpe2uv1 = B.Matrix.FromValues(
   // u      v  1
-  du      , 0, 1, 0,// w
+  du      , 0, 1, 0, // w
   1/8     , 1, 1, 0, // p
   1/4 - du, 0, 1, 0, // e
   0       , 0, 0, 1,
