@@ -1,6 +1,5 @@
 import * as B from "@babylonjs/core";
-import { createIcoVertices } from "./icovertices";
-import { createIcoSprite } from "./icosprite";
+import { createIcoVertices, createIcoSprite } from "./MyIcoSphere";
 
 // -----------------------------------------------------------------------------
 // Abbreviations and Utilities
