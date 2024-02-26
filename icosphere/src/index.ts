@@ -66,7 +66,7 @@ const mat = createStandardMaterial("ico mat", {
 
 const mesh = new B.Mesh("sphere", scene);
 mesh.material = mat;
-createIcovertices().applyToMesh(mesh);
+createIcovertices(6).applyToMesh(mesh);
 
 // Texture/Sprite Debugging
 if (false) {

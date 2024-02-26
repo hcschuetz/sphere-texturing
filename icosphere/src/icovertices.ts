@@ -70,40 +70,55 @@ const nonPoles = Array.from({ length: 10 }, (_, i) => v3(
   radius * Math.sin(TAU / 10 * i)
 ));
 
-export const createIcovertices = () => {
+export const createIcovertices = (nSteps: number) => {
   const indices: number[] = [];
   const positions: number[] = [];
   const uvs: number[] = [];
   let idx = 0;
-  const emitIcoFace = (a: V3, b: V3, c: V3, face: number) => {
-    indices.push(idx++, idx++, idx++);
-    positions.push(
-      a.x, a.y, a.z,
-      b.x, b.y, b.z,
-      c.x, c.y, c.z
-    );
-    if (Math.floor(face / 5) % 2 == 0) {
-      uvs.push(
-        ...getUV(face, 0, 1, 0),
-        ...getUV(face, 1, 0, 0),
-        ...getUV(face, 0, 0, 1),
-      );
+  function emitTriangle(a: number, b: number, c: number, flip: boolean): void {
+    if (flip) {
+      indices.push(a, c, b);
     } else {
-      uvs.push(
-        ...getUV(face, 0, 0, 1),
-        ...getUV(face, 1, 0, 0),
-        ...getUV(face, 0, 1, 0),
-      );
+      indices.push(a, b, c);
+    }
+  }
+  function emitIcoFace(e: V3, p: V3, w: V3, face: number, flip: boolean): void {
+    for (let i = 0; i <= nSteps; i++) {
+      for (let j = 0; j <= nSteps - i; j++) {
+        const k = nSteps - i - j;
+
+        if (i > 0) {
+          if (j > 0) {
+            emitTriangle(idx, idx-1, idx+i-nSteps-2, flip);
+          }
+          emitTriangle(idx, idx+i-nSteps-2, idx+i-nSteps-1, flip)
+        }
+
+        const pos = V3.Zero();
+        p.scaleAndAddToRef(i, pos);
+        w.scaleAndAddToRef(j, pos);
+        e.scaleAndAddToRef(k, pos);
+        positions.push(...pos.normalize().asArray());
+
+        uvs.push(...getUV(face, i / nSteps, j / nSteps, k / nSteps));
+
+        idx++;
+      }
     }
   };
   for (let i = 0; i < 5; i++) {
     const [upper0, lower1, upper2, lower3] =
       Array.from({length: 4}, (_, j) => nonPoles[(2*i + j) % 10]);
-    emitIcoFace(upper2, northPole, upper0,  0 + i);
-    emitIcoFace(upper0, lower1   , upper2,  5 + i);
-    emitIcoFace(lower3, upper2   , lower1, 10 + i);
-    emitIcoFace(lower1, southPole, lower3, 15 + i);
+    emitIcoFace(upper0, northPole, upper2,  0 + i, false);
+    emitIcoFace(upper0, lower1   , upper2,  5 + i, true);
+    emitIcoFace(lower1, upper2   , lower3, 10 + i, false);
+    emitIcoFace(lower1, southPole, lower3, 15 + i, true);
   };
 
-  return Object.assign(new B.VertexData(), { indices, positions, uvs });
+  return Object.assign(new B.VertexData(), {
+    indices,
+    positions,
+    normals: positions,
+    uvs,
+  });
 };
