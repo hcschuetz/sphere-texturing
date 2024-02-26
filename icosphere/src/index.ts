@@ -1,5 +1,5 @@
 import * as B from "@babylonjs/core";
-import { createIcovertices } from "./icovertices";
+import { createIcoVertices } from "./icovertices";
 import { createIcoSprite } from "./icosprite";
 
 // -----------------------------------------------------------------------------
@@ -66,7 +66,7 @@ const mat = createStandardMaterial("ico mat", {
 
 const mesh = new B.Mesh("sphere", scene);
 mesh.material = mat;
-createIcovertices(6).applyToMesh(mesh);
+createIcoVertices(6).applyToMesh(mesh);
 
 // Texture/Sprite Debugging
 if (false) {
