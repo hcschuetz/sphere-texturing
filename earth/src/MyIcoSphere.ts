@@ -28,6 +28,61 @@ const createMat3 = (
 
 // -----------------------------------------------------------------------------
 
+// Sprite Sheet (see also ../MyIcoSphere.md)
+// =========================================
+//
+// 1           -- |---X-------X-------X-------X-------X---|
+// 1   - dv    -- |19/.\ 15  /.\ 16  /.\ 17  /.\ 18  /.\19|           upper
+//                | // \\   // \\   // \\   // \\   // \\ |   polar
+//                |//   \\ //   \\ //   \\ //   \\ //   \\|           lower
+// 1/2 + dv/2  -- '/  0  \'/  1  \'/  2  \'/  3  \'/  4  \'
+// 1/2 - dv/2  -- X-------X-------X-------X-------X-------X
+//                |\  5  / \  6  / \  7  / \  8  / \  9  /|           upper
+//                | \   /   \   /   \   /   \   /   \   / |   equatorial
+//                |14\ / 10  \ / 11  \ / 12  \ / 13  \ /14|           lower
+// 0           -- |---X-------X-------X-------X-------X---|
+//
+// ^         u    |   |   |   |   |   |   |   |   |   |   |
+// |v       ---> 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0
+//
+//                  l   r   l   r   l   r   l   r   l   r     (left/right)
+//
+// (The distinctions between
+// - polar and equatorial,
+// - upper and lower,
+// - left and right
+// regions are made in the texture conversion code below
+// to figure out to which face a given (u, v) coordinate pair belongs.)
+//
+//
+// Conventions
+// ===========
+//
+// In names and comments we consider the y axis pointing northward.
+// Thus (0, 1, 0) and (0, -1, 0) are the north pole and the south pole of
+// the (unit) sphere and the x/z plane is the equatorial plane.
+//
+// The inscribed icosahedron has vertices at the north and south pole.
+// The upper vertices of faces 1 to 4 in the sprite sheet
+// are mapped to the north pole,
+// the lower vertices of faces 15 to 19 are mapped to the south pole.
+//
+// The left edge of face 0 and the right edge of face 4 are adjacent and mapped
+// to the meridian in the x/y plane, actually in the half plane with x >= 0.
+// Also the central vertical lines in faces 14 and 19 (where they are split in
+// the sprite sheet) are mapped to that meridian.
+//
+// Notice that each icosahedron face has one edge in west-east direction
+// (i.e., parallel to the u axis in the sprite sheet).
+// The opposite corner points to (or even is) the north pole or the south pole
+// (i.e., in the direction of the positive or negative v axis).
+// We use the names
+// - W and E (for "west" and "east") for the two ends of the west-east edge and
+// - P for the "poleward" vertex
+// when dealing with a given face.
+
+// -----------------------------------------------------------------------------
+
 /** How far above/below the equator are the non-pole vertices? */
 const height = Math.sqrt(1 / 5);
 /** How far away from the main axis are the non-pole vertices? */
@@ -39,24 +94,13 @@ const radius = 2 * height;
 const dv = .01;
 
 // -----------------------------------------------------------------------------
-// Naming convention:
-//
-// Each icosahedron face has one edge in west-east direction
-// (i.e., parallel to the u axis in the sprite sheet).
-// The opposite corner points to (or even is) the north pole or the south pole
-// (i.e., in the direction of the positive or negative v axis).
-//
-// We use the names W and E (for "west" and "east") for the two ends of the
-// west-east edge and P for the "polar" vertex when dealing with a given face.
-
-// -----------------------------------------------------------------------------
 // Triangulation
 
 const northPole = v3(0, 1, 0);
 const southPole = v3(0, -1, 0);
 
-// The calculations only require basic arithmetics and square roots.
-// But trigonometric functions should be easier to understand:
+// The following calculations only require basic arithmetics and square roots.
+// But trigonometric functions are easier to understand here:
 const nonPoles = Array.from({ length: 10 }, (_, i) => v3(
   radius * Math.cos(TAU / 10 * i),
   height * (-1) ** i,
@@ -65,7 +109,8 @@ const nonPoles = Array.from({ length: 10 }, (_, i) => v3(
 // support some circular access:
 nonPoles.push(...nonPoles.slice(0, 2));
 
-/** Compute vertex data for an icosphere where each edge is subdivided
+/**
+ * Compute vertex data for an icosphere where each edge is subdivided
  * into `nSteps` segments.
  */
 export const createIcoVertices = (nSteps: number) => {
@@ -87,6 +132,12 @@ export const createIcoVertices = (nSteps: number) => {
 
     for (let i = 0, jk = nSteps; jk >= 0; i++, jk--) {
       for (let j = 0, k = jk; k >= 0; j++, k--) {
+        emitVertex(
+          p.scale(i).addInPlace(e.scale(j)).addInPlace(w.scale(k)).normalize(),
+          u_w + (i * .1 + j * .2) / nSteps,
+          (i * v_p + jk * v_we) / nSteps,
+        );
+
         if (i > 0) {
           const prevLeft = idx - jk - 2;
           emitTriangle(idx, prevLeft, prevLeft + 1);
@@ -94,12 +145,6 @@ export const createIcoVertices = (nSteps: number) => {
             emitTriangle(idx, idx - 1, prevLeft);
           }
         }
-
-        emitVertex(
-          p.scale(i).addInPlace(e.scale(j)).addInPlace(w.scale(k)).normalize(),
-          u_w + (i * .1 + j * .2) / nSteps,
-          (i * v_p + jk * v_we) / nSteps,
-        );
         idx++;
       }
     }

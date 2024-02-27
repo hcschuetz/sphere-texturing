@@ -73,26 +73,3 @@ triangles are roughly equilateral:
 With, say, `dv = 0.01` we get
 
     width / height ≈ 20 / 7
-
-
-Texture Transformation
-----------------------
-
-The shader code in [src/icosprite.ts](src/icosprite.ts) is used to convert
-an equirectangular texture to a sprite sheet usable by an octasphere.
-
-Conventions:
-- We use Babylon's left-handed xyz coordinates.
-- We deal with the unit sphere centered at the origin of the coordinate
-  system.
-- In names and comments we consider the y axis pointing northward.
-  Thus `(0, 1, 0)` and `(0, -1, 0)` are the north pole and the south pole of
-  the sphere and the x/z plane is the equatorial plane.
-- First we map the sphere by a central (more precisely: gnomonic) projection
-  to the faces of an inscribed regular icosahedron with this orientation:
-  - The icosahedron's north pole (adjacent to faces 0 to 4)
-    coincides with the sphere's north pole at `(0, 1, 0)`.
-  - Furthermore the vertex adjacent to faces 0, 5, 14, 9, and 4 is in the
-    `x/y` plane with positive `x` value.
-    (Thus it has coordinates `(2 * sqrt(1 / 5), sqrt(1 / 5), 0)`.)
-  - This also determines the positions of all the other vertices.
