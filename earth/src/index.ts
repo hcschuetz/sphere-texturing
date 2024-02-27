@@ -146,45 +146,52 @@ showTextureElem.addEventListener("change", () => {
 // -----------------------------------------------------------------------------
 // Textures/Sprites
 
-let baseTexture = M.computed(() => {
+const baseTexture = M.computed(() => {
   const url = mapURL.get();
+  if (!url) {
+    return null;
+  }
   const tx = new B.Texture(url, scene, true);
   // Wrap around in east/west direction but not in north/south direction:
   tx.wrapU = B.Texture.WRAP_ADDRESSMODE;
   tx.wrapV = B.Texture.CLAMP_ADDRESSMODE;
   M.when(() => mapURL.get() !== url, () => tx.dispose());
   return tx;
-}, {keepAlive: true});
+});
 
-const octaSprite = M.computed(() => {
-  const base = baseTexture.get();
-  const spr = !base ? null : createOctaSprite("octaSprite", 5000, base, scene);
-  M.when(() => baseTexture.get() !== base, () => spr?.dispose())
-  return spr;
-}, {keepAlive: true});
-
-const icoSprite = M.computed(() => {
-  const base = baseTexture.get();
-  const spr = !base ? null : createIcoSprite("icoSprite", 2 * 1024, base, scene);
-  M.when(() => baseTexture.get() !== base, () => spr?.dispose());
-  return spr;
-}, {keepAlive: true});
-
-const myIcoSprite = M.computed(() => {
-  const base = baseTexture.get();
-  const spr = !base ? null : MyIco.createIcoSprite("myIcoSprite", 3600, base, scene);
-  M.when(() => baseTexture.get() !== base, () => spr?.dispose());
-  return spr;
-}, {keepAlive: true});
+const mapping = M.computed(() => {
+  switch(triangFn.get()) {
+    case "[babylon] sphere"   : return "plain";
+    case "[babylon] icosphere": return "ico";
+    case "[my] icosphere"     : return "myIco";
+    default                   : return "octa";
+  }
+});
 
 const currentTexture = M.computed(() => {
-  switch (triangFn.get()) {
-    case "[babylon] sphere"   : return baseTexture.get();
-    case "[babylon] icosphere": return icoSprite.get();
-    case "[my] icosphere"     : return myIcoSprite.get();
-    default:                    return octaSprite.get();
+  const base = baseTexture.get();
+  if (!base) {
+    return null;
   }
-}, {keepAlive: true});
+
+  const mappingVal = mapping.get();
+
+  function disposing(tx: B.Texture) {
+    M.when(
+      () => mapping.get() !== mappingVal || baseTexture.get() !== base,
+      () => tx.dispose(),
+    );
+    return tx;
+  }
+
+  switch (mappingVal) {
+    case "plain": return base;
+    case "ico"  : return disposing(createIcoSprite("icoSprite", 2 * 1024, base, scene));
+    case "myIco": return disposing(MyIco.createIcoSprite("myIcoSprite", 3600, base, scene));
+    case "octa" : return disposing(createOctaSprite("octaSprite", 5000, base, scene));
+  }
+});
+
 
 // -----------------------------------------------------------------------------
 // Material
