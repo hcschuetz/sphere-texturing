@@ -154,28 +154,28 @@ let baseTexture = M.computed(() => {
   tx.wrapV = B.Texture.CLAMP_ADDRESSMODE;
   M.when(() => mapURL.get() !== url, () => tx.dispose());
   return tx;
-});
+}, {keepAlive: true});
 
 const octaSprite = M.computed(() => {
   const base = baseTexture.get();
   const spr = !base ? null : createOctaSprite("octaSprite", 5000, base, scene);
   M.when(() => baseTexture.get() !== base, () => spr?.dispose())
   return spr;
-});
+}, {keepAlive: true});
 
 const icoSprite = M.computed(() => {
   const base = baseTexture.get();
   const spr = !base ? null : createIcoSprite("icoSprite", 2 * 1024, base, scene);
   M.when(() => baseTexture.get() !== base, () => spr?.dispose());
   return spr;
-});
+}, {keepAlive: true});
 
 const myIcoSprite = M.computed(() => {
   const base = baseTexture.get();
   const spr = !base ? null : MyIco.createIcoSprite("myIcoSprite", 3600, base, scene);
   M.when(() => baseTexture.get() !== base, () => spr?.dispose());
   return spr;
-});
+}, {keepAlive: true});
 
 const currentTexture = M.computed(() => {
   switch (triangFn.get()) {
@@ -184,7 +184,7 @@ const currentTexture = M.computed(() => {
     case "[my] icosphere"     : return myIcoSprite.get();
     default:                    return octaSprite.get();
   }
-});
+}, {keepAlive: true});
 
 // -----------------------------------------------------------------------------
 // Material
