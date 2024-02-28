@@ -8,6 +8,9 @@ import * as MyIco from "./MyIcoSphere";
 
 M.configure({enforceActions: "never"});
 
+let nameCount = 0;
+const nm = (base: string) => base + "#" + nameCount++;
+
 // -----------------------------------------------------------------------------
 // Abbreviations and Utilities
 
@@ -22,7 +25,7 @@ const createStandardMaterial = (
   options: Partial<B.StandardMaterial>,
   scene?: B.Scene
 ): B.StandardMaterial =>
-  Object.assign(new B.StandardMaterial(name, scene), options);
+  Object.assign(new B.StandardMaterial(nm(name), scene), options);
 
 // -----------------------------------------------------------------------------
 // Set up engine/scene/camera/lighting
@@ -36,7 +39,7 @@ const engine = new B.Engine(canvas, true, {
 const scene = new B.Scene(engine);
 scene.clearColor = new B.Color4(0, 0, 0, 0);
 
-const camera = new B.ArcRotateCamera("camera", .55 * TAU, .15 * TAU, 3, v3(0, 0, 0), scene);
+const camera = new B.ArcRotateCamera(nm("camera"), .55 * TAU, .15 * TAU, 3, v3(0, 0, 0), scene);
 camera.lowerRadiusLimit = 2.1;
 camera.upperRadiusLimit = 10;
 camera.attachControl(undefined, true);
@@ -45,11 +48,11 @@ camera.attachControl(undefined, true);
 
 // // Day & Night:
 // const sunDirection = v3(1, -.2, 0);
-// new B.DirectionalLight("sun", sunDirection, scene);
+// new B.DirectionalLight(nm("sun"), sunDirection, scene);
 
 // Illuminate both hemispheres:
-new B.HemisphericLight("north", v3(0, +1, 0), scene);
-new B.HemisphericLight("south", v3(0, -1, 0), scene);
+new B.HemisphericLight(nm("north"), v3(0, +1, 0), scene);
+new B.HemisphericLight(nm("south"), v3(0, -1, 0), scene);
 
 
 // -----------------------------------------------------------------------------
@@ -60,7 +63,9 @@ type URLExample = {name: string, url: string};
 const urlExamples: URLExample[] = [
   {
     name: "Earth",
-    url: "https://neo.gsfc.nasa.gov/servlet/RenderData?si=526304&cs=rgb&format=JPEG&width=3600&height=1800",
+    url: "https://upload.wikimedia.org/wikipedia/commons/5/56/Blue_Marble_Next_Generation_%2B_topography_%2B_bathymetry.jpg",
+    // currently (2024-02-28) downloads from this site do not work:
+    // url: "https://neo.gsfc.nasa.gov/servlet/RenderData?si=526304&cs=rgb&format=JPEG&width=3600&height=1800",
   },
   {
     name: "Moon",
@@ -74,10 +79,11 @@ const urlExamples: URLExample[] = [
     name: "Earth with Tissot indicatrix",
     url: "https://upload.wikimedia.org/wikipedia/commons/thumb/1/17/Plate_Carr%C3%A9e_with_Tissot%27s_Indicatrices_of_Distortion.svg/2560px-Plate_Carr%C3%A9e_with_Tissot%27s_Indicatrices_of_Distortion.svg.png",
   },
-  {
-    name: "Earth Elevation",
-    url: "https://upload.wikimedia.org/wikipedia/commons/9/93/Elevation.jpg",
-  }
+  // This one is large and slow:
+  // {
+  //   name: "Earth Elevation",
+  //   url: "https://upload.wikimedia.org/wikipedia/commons/9/93/Elevation.jpg",
+  // },
 ]
 
 const mapURL = M.observable.box(urlExamples[0].url);
@@ -155,7 +161,7 @@ const baseTexture = M.computed(() => {
   // Wrap around in east/west direction but not in north/south direction:
   tx.wrapU = B.Texture.WRAP_ADDRESSMODE;
   tx.wrapV = B.Texture.CLAMP_ADDRESSMODE;
-  M.when(() => mapURL.get() !== url, () => tx.dispose());
+  M.when(() => baseTexture.get() !== tx, () => tx.dispose());
   return tx;
 });
 
@@ -177,18 +183,15 @@ const currentTexture = M.computed(() => {
   const mappingVal = mapping.get();
 
   function disposing(tx: B.Texture) {
-    M.when(
-      () => mapping.get() !== mappingVal || baseTexture.get() !== base,
-      () => tx.dispose(),
-    );
+    M.when(() => currentTexture.get() !== tx, () => tx.dispose());
     return tx;
   }
 
   switch (mappingVal) {
     case "plain": return base;
-    case "ico"  : return disposing(createIcoSprite("icoSprite", 2 * 1024, base, scene));
-    case "myIco": return disposing(MyIco.createIcoSprite("myIcoSprite", 3600, base, scene));
-    case "octa" : return disposing(createOctaSprite("octaSprite", 5000, base, scene));
+    case "ico"  : return disposing(createIcoSprite(nm("icoSprite"), 2 * 1024, base, scene));
+    case "myIco": return disposing(MyIco.createIcoSprite(nm("myIcoSprite"), 3600, base, scene));
+    case "octa" : return disposing(createOctaSprite(nm("octaSprite"), 5000, base, scene));
   }
 });
 
@@ -209,7 +212,7 @@ M.autorun(() => mat.wireframe = displayMode.get() === "wireframe");
 {
   const uvs = [[0, 0], [1, 0], [1, 1], [0, 1]];
   const rectangle =
-    new B.Mesh("sprite display", scene)
+    new B.Mesh(nm("sprite display"), scene)
     .setIndices([[0, 1, 2], [0, 2, 3]].flat())
     .setVerticesData(B.VertexBuffer.UVKind, uvs.flat());
   const zoom = 1 / 5000;
@@ -240,11 +243,12 @@ M.autorun(() => mat.wireframe = displayMode.get() === "wireframe");
 
 const smooth = M.computed(() => displayMode.get() !== "polyhedron");
 
-const mesh = new B.Mesh("sphere", scene);
+const mesh = new B.Mesh(nm("sphere"), scene);
 mesh.material = mat;
 M.autorun(() => {
+  const fnName = triangFn.get();
   let vertexData: B.VertexData, material: B.Nullable<B.Material>;
-  switch (triangFn.get()) {
+  switch (fnName) {
     case "[babylon] sphere":
       vertexData = B.CreateSphereVertexData({
         diameter: 2,
@@ -261,7 +265,7 @@ M.autorun(() => {
       break;
     default:
       vertexData = createOctaSphereVertexData(
-        T.triangulationFns[triangFn.get()](nSteps.get())
+        T.triangulationFns[fnName](nSteps.get())
       );
       break;
   }

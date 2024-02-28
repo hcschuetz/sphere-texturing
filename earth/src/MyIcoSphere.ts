@@ -188,7 +188,7 @@ function uv12pos(
       u_p, v_p , 1,
       u_e, v_we, 1,
     )
-    .invertToRef(new B.Matrix())
+    .invert()
     .multiply(createMat3(
       radius   * Math.cos(u_w * TAU), y_we, radius   * Math.sin(u_w * TAU),
       radius_p * Math.cos(u_p * TAU), y_p , radius_p * Math.sin(u_p * TAU),
