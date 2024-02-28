@@ -108,15 +108,24 @@ mapURLExamplesElem.addEventListener("change", () => {
 
 const triangFn = M.observable.box("geodesics");
 const triangFnElem = document.querySelector("#triangFn") as HTMLSelectElement;
-triangFnElem.innerHTML =
-  [
-    "[babylon] sphere",
-    "[babylon] icosphere",
-    "[my] icosphere",
-    ...Object.keys(T.triangulationFns)
-  ]
-  .filter(name => name !== "collapsed")
-  .map(name => `<option>${name}</option>`).join("\n");
+triangFnElem.innerHTML = `
+  <optgroup label="Octahedral&nbsp;">
+    ${Object.keys(T.triangulationFns).map(name => {
+      switch (name) {
+        case "collapsed": return "";
+        case "flat":
+        case "sines": return `<option value="${name}">${name} (non-spheric)</option>`;
+        default: return `<option>${name}</option>`;
+        }
+    }).join("\n")
+    }
+  </optgroup>
+  <optgroup label="Non-Octahedral&nbsp;">
+    <option>[my] icosphere</option>
+    <option>[babylon] icosphere</option>
+    <option>[babylon] sphere</option>
+  </optgroup>
+  `;
 triangFnElem.value = triangFn.get();
 triangFnElem.addEventListener("change", () => {
   triangFn.set(triangFnElem.value);
@@ -135,7 +144,7 @@ const numberOfTrianglesElem = document.querySelector("#numberOfTriangles");
 const numberOfTriangles = M.observable.box<number>(0);
 M.autorun(() => numberOfTrianglesElem!.textContent = numberOfTriangles.get().toFixed());
 
-const displayMode = M.observable.box("polyhedron");
+const displayMode = M.observable.box("smooth");
 const displayModeElem = document.querySelector("#displayMode") as HTMLSelectElement;
 displayModeElem.value = displayMode.get();
 displayModeElem.addEventListener("change", () => {
