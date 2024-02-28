@@ -23,14 +23,18 @@ accessed with `uv` coordinates normalized to the range `[0..1]x[0..1]`.
 
 We start with this projection because it is used by various maps on the web,
 in particular at [Nasa Earth Observations](https://neo.gsfc.nasa.gov/)
-and in the [Wikipedia Commons](https://commons.wikimedia.org/w/index.php?search=equirectangular+projection&title=Special:MediaSearch&go=Go&type=image).
+and in the Wikipedia Commons
+([search](https://commons.wikimedia.org/w/index.php?search=equirectangular+projection&title=Special:MediaSearch&go=Go&type=image)
+or check
+[this category](https://commons.wikimedia.org/wiki/Category:Maps_with_equirectangular_projection)
+and its subcategories).
 
 You can select an example map in the menu or enter the URL of an image file
 in the text-input field.
 
 Notice that the image resource
-- must have one of the image types supported by BabylonJS textures
-  (JPEG, PNG, maybe others) and
+- must have a supported image type
+  (JPEG, PNG, SVG, ...) and
 - must be CORS-enabled so that the application may retrieve it.
 
 
