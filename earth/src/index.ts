@@ -256,7 +256,7 @@ const mesh = new B.Mesh(nm("sphere"), scene);
 mesh.material = mat;
 M.autorun(() => {
   const fnName = triangFn.get();
-  let vertexData: B.VertexData, material: B.Nullable<B.Material>;
+  let vertexData: B.VertexData;
   switch (fnName) {
     case "[babylon] sphere":
       vertexData = B.CreateSphereVertexData({
