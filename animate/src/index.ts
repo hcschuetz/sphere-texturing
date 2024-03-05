@@ -433,7 +433,6 @@ function fillIcoPos(bend: number, shiftSouth: number) {
     return mid_ab.add(rotated);
   }
 
-  // TODO "hoi" should rotate according to bend
   const mid_hi = v3(radius * Math.cos(TAU/10), height, 0);
   const oHeight = v3(radius, -height, 0).subtract(mid_hi);
   const oHeightFlat = v3(0, -oHeight.length(), 0);
