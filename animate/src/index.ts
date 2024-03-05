@@ -73,33 +73,36 @@ if (false) {
     createStandardMaterial("originMat", {
       diffuseColor: B.Color3.Black(),
     }, scene);
-  }
+}
 
 // -----------------------------------------------------------------------------
 
-  const latLonElement = document.querySelector<HTMLInputElement>("#latLon")!;
-  latLonElement.addEventListener("change", setVisibility);
+const latLon2Element = document.querySelector<HTMLInputElement>("#latLon2")!;
+latLon2Element.addEventListener("change", setVisibility);
 
-  const latClosednessElem = document.querySelector<HTMLInputElement>("#latClosedness")!;
-  latClosednessElem.addEventListener("input", repositionLL);
+const latLonElement = document.querySelector<HTMLInputElement>("#latLon")!;
+latLonElement.addEventListener("change", setVisibility);
 
-  const lonClosednessElem = document.querySelector<HTMLInputElement>("#lonClosedness")!;
-  lonClosednessElem.addEventListener("input", repositionLL);
+const latClosednessElem = document.querySelector<HTMLInputElement>("#latClosedness")!;
+latClosednessElem.addEventListener("input", repositionLL);
 
-  const icoSphElement = document.querySelector<HTMLInputElement>("#icosph")!;
-  icoSphElement.addEventListener("change", setVisibility);
+const lonClosednessElem = document.querySelector<HTMLInputElement>("#lonClosedness")!;
+lonClosednessElem.addEventListener("input", repositionLL);
 
-  const icoBulgesElement = document.querySelector<HTMLInputElement>("#icoBulges")!;
-  icoBulgesElement?.addEventListener("input", adaptBulge);
+const icoSphElement = document.querySelector<HTMLInputElement>("#icosph")!;
+icoSphElement.addEventListener("change", setVisibility);
 
-  const icosahedronElement = document.querySelector<HTMLInputElement>("#icosahedron")!;
-  icosahedronElement.addEventListener("change", setVisibility);
+const icoBulgesElement = document.querySelector<HTMLInputElement>("#icoBulges")!;
+icoBulgesElement?.addEventListener("input", adaptBulge);
 
-  const icoClosednessElem = document.querySelector<HTMLInputElement>("#icoClosedness")!;
-  icoClosednessElem.addEventListener("input", adaptIco);
+const icosahedronElement = document.querySelector<HTMLInputElement>("#icosahedron")!;
+icosahedronElement.addEventListener("change", setVisibility);
 
-  const icoShiftSouthElem = document.querySelector<HTMLInputElement>("#icoShiftSouth")!;
-  icoShiftSouthElem.addEventListener("input", adaptIco);
+const icoClosednessElem = document.querySelector<HTMLInputElement>("#icoClosedness")!;
+icoClosednessElem.addEventListener("input", adaptIco);
+
+const icoShiftSouthElem = document.querySelector<HTMLInputElement>("#icoShiftSouth")!;
+icoShiftSouthElem.addEventListener("input", adaptIco);
 
 // -----------------------------------------------------------------------------
 // Textures/Sprites
@@ -146,7 +149,7 @@ const indices =
   new Float32Array((4 * stepsPerRightAngle) * (2 * stepsPerRightAngle) * 2 * 3);
 const backIndices =
   new Float32Array((4 * stepsPerRightAngle) * (2 * stepsPerRightAngle) * 2 * 3);
-{
+{ 
   let vtxIdx = 0;
   let indicesIdx = 0;
   for (let i = -stepsPerRightAngle; i < stepsPerRightAngle; i++) {
@@ -236,6 +239,110 @@ function repositionLL() {
   llBackMesh.updateVerticesData(B.VertexBuffer.PositionKind, llPos);
   llBackMesh.createNormals(true);
 }
+
+// ------------- --------------  --------- ----------  ------------------  ----
+
+const latLonMaterial = new B.ShaderMaterial(nm("lat/lon mat"), scene, {
+  vertexSource: `
+    uniform float latClosedness;
+    uniform float lonClosedness;
+
+    uniform mat4 worldViewProjection;
+
+    // attribute vec3 position;
+    attribute vec2 uv;
+
+    varying vec2 vUV;
+
+    void main() {
+      float rLat = 1. / latClosedness;
+      float lat = (uv.y - 0.5) * ${TAU/2};
+      float latEffective = lat * latClosedness;
+      vec2 meridian =
+      latClosedness < 1e-3
+        //     radial (xz)                       axial (y)
+        ? vec2(0                               , lat                     )
+        : vec2((cos(latEffective) - 1.0) * rLat, sin(latEffective) * rLat);
+
+      float rLon = 1. / lonClosedness;
+      float lon = (uv.x - 0.5) * ${TAU};
+      float lonEffective = lon * lonClosedness;
+      float r_xz = rLon + meridian.x;
+      vec2 parallel =
+        lonClosedness < 1e-3
+        //     x                                 z
+        ? vec2(meridian.x                     , lon                     )
+        : vec2(r_xz * cos(lonEffective) - rLon, r_xz * sin(lonEffective));
+
+      gl_Position = worldViewProjection * vec4(parallel.x + 1.0, meridian.y, parallel.y, 1.0);
+      vUV = uv;
+    }
+  `,
+  fragmentSource: `
+    uniform sampler2D tx;
+
+    varying vec2 vUV;
+
+    void main() {
+      gl_FragColor = texture(tx, vUV);
+    }
+  `
+}, {
+  attributes: ["uv"],
+  uniforms: [
+    "latClosedness", "lonClosedness",
+    "worldViewProjection",
+    "tx",
+  ],
+});
+
+const uvs = new Float32Array(nVertices * 2);
+const positions = new Float32Array(nVertices * 3); // just needed for its size
+{
+  const nUSteps = 4 * stepsPerRightAngle;
+  const nVSteps = 2 * stepsPerRightAngle;
+  const uStep = 1 / nUSteps;
+  const vStep = 1 / nVSteps;
+  let uvIdx = 0;
+  for (let i = 0; i <= nVSteps; i++) {
+    for (let j = 0; j <= nUSteps; j++) {
+      uvs[uvIdx++] = j * uStep;
+      uvs[uvIdx++] = i * vStep;
+    }
+  }
+}
+
+latLonMaterial.setTexture("tx", baseTexture);
+
+latClosednessElem.addEventListener("input", setLL2Params);
+lonClosednessElem.addEventListener("input", setLL2Params);
+
+const ll2Mesh = new B.Mesh(nm("lat/lon 2"), scene);
+Object.assign(new B.VertexData(), {
+  indices,
+  positions,
+  normals: positions,
+  uvs,
+}).applyToMesh(ll2Mesh, true);
+ll2Mesh.material = latLonMaterial;
+
+const ll2BackMesh = new B.Mesh(nm("lat/lon 2 back"), scene);
+Object.assign(new B.VertexData(), {
+  indices: backIndices,
+  positions,
+  normals: positions,
+  uvs,
+}).applyToMesh(ll2BackMesh, true);
+ll2BackMesh.material = latLonMaterial;
+
+function setLL2Params() {
+  latLonMaterial.setFloat("latClosedness", Number(latClosednessElem.value));
+  latLonMaterial.setFloat("lonClosedness", Number(lonClosednessElem.value));
+  ll2Mesh.createNormals(true);
+}
+
+setLL2Params();
+
 
 // -----------------------------------------------------------------------------
 // Icosphere
@@ -404,6 +511,7 @@ function adaptIco() {
 // -----------------------------------------------------------------------------
 
 function setVisibility() {
+  ll2Mesh.isVisible = ll2BackMesh.isVisible = latLon2Element.checked;
   llMesh.isVisible = llBackMesh.isVisible = latLonElement.checked;
   icoSphMesh.isVisible = icoSphElement.checked;
   icoMesh.isVisible = icoBackMesh.isVisible = icosahedronElement.checked;
