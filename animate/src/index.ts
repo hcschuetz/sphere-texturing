@@ -353,10 +353,7 @@ const namedIcoIndices: Record<string, number> = Object.fromEntries(
   .trim().split(/\s+/).map((c, i) => [c, i])
 );
 
-/** front triangles */
-const icoIndices = new Float32Array((20 + 2) * 3);
-/** back triangles */
-const icoBackIndices = new Float32Array((20 + 2) * 3);
+const icoIndices = new Uint16Array((20 + 2) * 3);
 
 `
    fga ghb hic ijd jke
@@ -365,9 +362,9 @@ const icoBackIndices = new Float32Array((20 + 2) * 3);
  LSM MTN NUO OVP PWQ QXR
 `
 .trim().split(/\s+/).forEach(([c0, c1, c2], f) => {
-  icoBackIndices[3 * f + 0] = icoIndices[3 * f + 0] = namedIcoIndices[c0];
-  icoBackIndices[3 * f + 2] = icoIndices[3 * f + 1] = namedIcoIndices[c1];
-  icoBackIndices[3 * f + 1] = icoIndices[3 * f + 2] = namedIcoIndices[c2];
+  icoIndices[3 * f + 0] = namedIcoIndices[c0];
+  icoIndices[3 * f + 1] = namedIcoIndices[c1];
+  icoIndices[3 * f + 2] = namedIcoIndices[c2];
 });
 
 /** uv coordinates for vertices */
@@ -506,7 +503,7 @@ const icoVertexData = Object.assign(new B.VertexData(), {
 });
 
 const icoBackVertexData = Object.assign(new B.VertexData(), {
-  indices: icoBackIndices,
+  indices: flipTriangles(icoIndices),
   positions: icoPos,
   uvs: icoUVs,
 });
