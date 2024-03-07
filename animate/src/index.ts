@@ -530,9 +530,9 @@ function setVisibility() {
 
 setVisibility();
 
-inputs.latLon.addEventListener("change", setVisibility);
-inputs.icoSph.addEventListener("change", setVisibility);
-inputs.icosahedron.addEventListener("change", setVisibility);
+inputs.latLon.addEventListener("input", setVisibility);
+inputs.icoSph.addEventListener("input", setVisibility);
+inputs.icosahedron.addEventListener("input", setVisibility);
 
 // -----------------------------------------------------------------------------
 
