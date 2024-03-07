@@ -112,6 +112,11 @@ const icoMat = createStandardMaterial("icosphere mat", {
   diffuseTexture: createIcoSprite(nm("myIcoSprite"), 3600, baseTexture, scene),
 }, scene);
 
+const icoSphMat = createStandardMaterial("icosphere mat", {
+  specularColor: new B.Color3(.5, .5, .5),
+  diffuseTexture: createIcoSprite(nm("myIcoSprite"), 3600, baseTexture, scene),
+}, scene);
+
 // -----------------------------------------------------------------------------
 // Lat/Lon Sphere
 
@@ -136,10 +141,6 @@ class LLBendPluginMaterial extends B.MaterialPluginBase {
         { name: "lonClosedness", size: 1, type: "float" },
         { name: "latClosedness", size: 1, type: "float" },
       ],
-      fragment: `
-        uniform float lonClosedness;
-        uniform float latClosedness;
-      `,
     };
   }
 
@@ -261,8 +262,48 @@ let llSphereBack: B.Mesh;
 // -----------------------------------------------------------------------------
 // Icosphere
 
+class SphereBulgePluginMaterial extends B.MaterialPluginBase {
+  constructor(material: B.Material) {
+    super(material, "SphereBulge", 200, { SPHERE_BULGE: false });
+    this._enable(true);
+  }
+
+  getClassName() {
+    return "SphereBulgePluginMaterial";
+  }
+
+  prepareDefines(defines: B.MaterialDefines) {
+    defines.SPHERE_BULGE = true;
+    defines.NORMAL = true;
+  }
+
+  getUniforms() {
+    return {ubo: [{name: "bulge", size: 1, type: "float"}]};
+  }
+
+  bulge = 0.7;
+
+  bindForSubMesh(uniformBuffer: B.UniformBuffer) {
+    uniformBuffer.updateFloat("bulge", this.bulge);
+  }
+
+  getCustomCode(shaderType: string) {
+    return shaderType !== "vertex" ? null : {
+      CUSTOM_VERTEX_UPDATE_POSITION: `
+        vec3 normalizedPos = normalize(position);
+        positionUpdated = mix(position, normalizedPos, bulge);
+      `,
+      CUSTOM_VERTEX_UPDATE_NORMAL: `
+        normalUpdated = mix(normal, normalizedPos, bulge);
+      `,
+    }
+  }
+}
+
 const icoSphMesh = new B.Mesh(nm("icosphere"), scene);
-icoSphMesh.material = icoMat;
+
+const icoSphBulgePlugin = new SphereBulgePluginMaterial(icoSphMat);
+icoSphMesh.material = icoSphMat;
 
 icoSphMesh.rotate(B.Axis.Y, TAU/2);
 
@@ -271,20 +312,7 @@ const icoSphVertexData = createIcoVertices(12);
 icoSphVertexData.applyToMesh(icoSphMesh, true);
 
 function adaptBulge(): void {
-  const bulge = Number(inputs.icoBulges.value);
-
-  // TODO
-  // - computing full vtxData is not needed, only positions
-  // - should not create new data structures but write into existing
-  // - might/should go to WebGL
-
-  const {positions} = createIcoVertices(12, bulge);
-  icoSphMesh.updateVerticesData(B.VertexBuffer.PositionKind, positions);
-  if (bulge === 1) {
-    icoSphMesh.updateVerticesData(B.VertexBuffer.NormalKind, positions);
-  } else {
-    icoSphMesh.createNormals(true);
-  }
+  icoSphBulgePlugin.bulge = Number(inputs.icoBulges.value);
 }
 
 adaptBulge();

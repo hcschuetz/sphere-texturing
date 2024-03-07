@@ -113,7 +113,7 @@ nonPoles.push(...nonPoles.slice(0, 2));
  * Compute vertex data for an icosphere where each edge is subdivided
  * into `nSteps` segments.
  */
-export const createIcoVertices = (nSteps: number, bulge = 1) => {
+export const createIcoVertices = (nSteps: number) => {
   const positions: number[] = [];
   const uvs: number[] = [];
   let idx = 0;
@@ -132,10 +132,10 @@ export const createIcoVertices = (nSteps: number, bulge = 1) => {
 
     for (let i = 0, jk = nSteps; jk >= 0; i++, jk--) {
       for (let j = 0, k = jk; k >= 0; j++, k--) {
-        const posFace = p.scale(i).addInPlace(e.scale(j)).addInPlace(w.scale(k)).scale(1 / nSteps);
-        const posSphere = posFace.clone().normalize();
         emitVertex(
-          V3.Lerp(posFace, posSphere, bulge),
+          // This position is actually on the icosahedron face.  We leave it to the material
+          // to add a "bulge" over the face to produce a sphere.
+          p.scale(i).addInPlace(e.scale(j)).addInPlace(w.scale(k)).scale(1 / nSteps),
           u_w + (i * .1 + j * .2) / nSteps,
           (i * v_p + jk * v_we) / nSteps,
         );
@@ -162,10 +162,12 @@ export const createIcoVertices = (nSteps: number, bulge = 1) => {
     emitIcoFace(lower1, southPole, lower3, (i+.5)/5,  1      , (1+dv)/2, true );
   };
 
+  const normals = new Float32Array(positions.length);
+  B.VertexData.ComputeNormals(positions, indices, normals);
   return Object.assign(new B.VertexData(), {
     indices,
     positions,
-    normals: positions,
+    normals,
     uvs,
   });
 };
