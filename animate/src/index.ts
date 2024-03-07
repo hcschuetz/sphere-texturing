@@ -77,32 +77,9 @@ if (false) {
 
 // -----------------------------------------------------------------------------
 
-const latLon2Element = document.querySelector<HTMLInputElement>("#latLon2")!;
-latLon2Element.addEventListener("change", setVisibility);
-
-const latLonElement = document.querySelector<HTMLInputElement>("#latLon")!;
-latLonElement.addEventListener("change", setVisibility);
-
-const latClosednessElem = document.querySelector<HTMLInputElement>("#latClosedness")!;
-latClosednessElem.addEventListener("input", repositionLL);
-
-const lonClosednessElem = document.querySelector<HTMLInputElement>("#lonClosedness")!;
-lonClosednessElem.addEventListener("input", repositionLL);
-
-const icoSphElement = document.querySelector<HTMLInputElement>("#icosph")!;
-icoSphElement.addEventListener("change", setVisibility);
-
-const icoBulgesElement = document.querySelector<HTMLInputElement>("#icoBulges")!;
-icoBulgesElement?.addEventListener("input", adaptBulge);
-
-const icosahedronElement = document.querySelector<HTMLInputElement>("#icosahedron")!;
-icosahedronElement.addEventListener("change", setVisibility);
-
-const icoClosednessElem = document.querySelector<HTMLInputElement>("#icoClosedness")!;
-icoClosednessElem.addEventListener("input", adaptIco);
-
-const icoShiftSouthElem = document.querySelector<HTMLInputElement>("#icoShiftSouth")!;
-icoShiftSouthElem.addEventListener("input", adaptIco);
+const inputs = Object.fromEntries(
+  [...document.querySelectorAll("input")].map(el => [el.id, el])
+);
 
 // -----------------------------------------------------------------------------
 // Textures/Sprites
@@ -114,6 +91,11 @@ const baseTexture = Object.assign(new B.Texture(url, scene, true), {
   wrapU: B.Texture.WRAP_ADDRESSMODE,
   wrapV: B.Texture.CLAMP_ADDRESSMODE,
 });
+
+const llBackMat = createStandardMaterial("back mat", {
+  diffuseColor : new B.Color3(.5, .5, .5),
+  specularColor: new B.Color3(.5, .5, .5),
+}, scene);
 
 const backMat = createStandardMaterial("back mat", {
   diffuseColor : new B.Color3(.5, .5, .5),
@@ -133,216 +115,148 @@ const icoMat = createStandardMaterial("icosphere mat", {
 // -----------------------------------------------------------------------------
 // Lat/Lon Sphere
 
-const llMesh = new B.Mesh(nm("latLon sphere"), scene);
-llMesh.material = llMat;
+class LLBendPluginMaterial extends B.MaterialPluginBase {
+  constructor(material: B.Material) {
+    super(material, "LLBend", 200, { LL_BEND: false });
+    this._enable(true);
+  }
 
-const llBackMesh = new B.Mesh(nm("latLon sphere back"), scene);
-llBackMesh.material = backMat;
+  getClassName() {
+    return "LLBendPluginMaterial";
+  }
 
-const stepsPerRightAngle = 90;
+  prepareDefines(defines: B.MaterialDefines) {
+    defines.LL_BEND = true;
+    defines.NORMAL = true;
+  }
 
-const nLongitudes = 4 * stepsPerRightAngle + 1;
-const nLatitudes = 2 * stepsPerRightAngle + 1;
-const nVertices = nLatitudes * nLongitudes;
+  getUniforms() {
+    return {
+      ubo: [
+        { name: "lonClosedness", size: 1, type: "float" },
+        { name: "latClosedness", size: 1, type: "float" },
+      ],
+      fragment: `
+        uniform float lonClosedness;
+        uniform float latClosedness;
+      `,
+    };
+  }
 
-const indices =
-  new Float32Array((4 * stepsPerRightAngle) * (2 * stepsPerRightAngle) * 2 * 3);
-const backIndices =
-  new Float32Array((4 * stepsPerRightAngle) * (2 * stepsPerRightAngle) * 2 * 3);
-{ 
-  let vtxIdx = 0;
-  let indicesIdx = 0;
-  for (let i = -stepsPerRightAngle; i < stepsPerRightAngle; i++) {
-    for (let j = -2*stepsPerRightAngle; j < 2*stepsPerRightAngle; j++) {
-      const A = vtxIdx++;
-      const B = A + 1;
-      const D = A + (4*stepsPerRightAngle+1);
-      const C = D + 1;
+  lonClosedness = 0.7;
+  latClosedness = 0.3;
 
-      indices[indicesIdx] = A; backIndices[indicesIdx++] = A;
-      indices[indicesIdx] = B; backIndices[indicesIdx++] = D;
-      indices[indicesIdx] = D; backIndices[indicesIdx++] = B;
+  bindForSubMesh(uniformBuffer: B.UniformBuffer) {
+    uniformBuffer.updateFloat("lonClosedness", this.lonClosedness);
+    uniformBuffer.updateFloat("latClosedness", this.latClosedness);
+  }
 
-      indices[indicesIdx] = B; backIndices[indicesIdx++] = B;
-      indices[indicesIdx] = C; backIndices[indicesIdx++] = D;
-      indices[indicesIdx] = D; backIndices[indicesIdx++] = C;
+  getCustomCode(shaderType: string) {
+    return shaderType !== "vertex" ? null : {
+      CUSTOM_VERTEX_UPDATE_POSITION: `
+        float rLat = 1. / latClosedness;
+        float lat = position.y;
+        float latEffective = lat * latClosedness;
+        float cLat = cos(latEffective);
+        float sLat = sin(latEffective);
+        vec2 meridian =
+          latClosedness < 1e-3
+          //     radial (xz)          axial (y)
+          ? vec2(0                  , lat                     )
+          : vec2((cLat - 1.0) * rLat, sLat * rLat);
+
+        float rLon = 1. / lonClosedness;
+        float lon = position.x;
+        float lonEffective = lon * lonClosedness;
+        float cLon = cos(lonEffective);
+        float sLon = sin(lonEffective);
+        float r_xz = rLon + meridian.x;
+        vec2 parallel =
+          lonClosedness < 1e-3
+          //     x                   z
+          ? vec2(meridian.x        , lon        )
+          : vec2(r_xz * cLon - rLon, r_xz * sLon);
+
+        positionUpdated = vec3(parallel.x + 1.0, meridian.y, parallel.y);
+      `,
+      CUSTOM_VERTEX_UPDATE_NORMAL: `
+        normalUpdated = (
+          cLat < 1e-3 || lonClosedness < 1e-3 ? vec3(cLat, sLat, 0) :
+          normalize(cross(
+            vec3(-sLat * cLon, cLat, -sLat * sLon),
+            vec3(r_xz * -sLon, 0, r_xz * cLon)
+          ))
+        ) * vec3(position.z);
+      `,
     }
-    vtxIdx++;
   }
 }
 
-const llUVs = new Float32Array(nVertices * 2);
+const flipOffset = [0, 1, -1];
+const flipTriangles = (input: B.IndicesArray) =>
+  input.map((_, i) => input[i + flipOffset[i % 3]]);
+
+function createGrid(uSteps: number, vSteps: number) {
+  const nVertices = (uSteps + 1) * (vSteps + 1);
+  const positions = new Float32Array(nVertices * 3); // not really used, just for its size
+  const uvs = new Float32Array(nVertices * 2);
+  const indices = new Uint32Array(6 * uSteps * vSteps);
+
+  let idxIdx = 0;
+  for (let vIdx = 0; vIdx <= vSteps; vIdx++) {
+    const v = vIdx / vSteps;
+    for (let uIdx = 0; uIdx <= uSteps; uIdx++) {
+      const u = uIdx / uSteps;
+      const idx = uIdx + vIdx * (uSteps + 1);
+      uvs[2 * idx + 0] = u;
+      uvs[2 * idx + 1] = v;
+      positions[3 * idx + 0] = (u - 0.5) * TAU;    // lon
+      positions[3 * idx + 1] = (v - 0.5) * TAU/2;  // lat
+      positions[3 * idx + 2] = 1;                  // +1: outside, -1: inside
+      if (u > 0 && v > 0) {
+        indices[idxIdx++] = idx;
+        indices[idxIdx++] = idx-1;
+        indices[idxIdx++] = idx-(uSteps+1);
+        indices[idxIdx++] = idx-1;
+        indices[idxIdx++] = idx-(uSteps+1)-1;
+        indices[idxIdx++] = idx-(uSteps+1);
+      }
+    }
+  }
+
+  return Object.assign(new B.VertexData(), {indices, positions, uvs});
+}
+
+
+let llSphere: B.Mesh;
+let llSphereBack: B.Mesh;
 {
-  let uvIdx = 0;
-  for (let i = -stepsPerRightAngle; i <= stepsPerRightAngle; i++) {
-    for (let j = -2*stepsPerRightAngle; j <= 2*stepsPerRightAngle; j++) {
-      llUVs[uvIdx++] = (j + 2 * stepsPerRightAngle) / (4 * stepsPerRightAngle);
-      llUVs[uvIdx++] = (i + stepsPerRightAngle) / (2 * stepsPerRightAngle);
-    }
+  const bendMaterial = new LLBendPluginMaterial(llMat);
+  const bendBackMaterial = new LLBendPluginMaterial(llBackMat);
+
+  function updateBend() {
+    bendMaterial.latClosedness = bendBackMaterial.latClosedness = Number(inputs.latClosedness.value);
+    bendMaterial.lonClosedness = bendBackMaterial.lonClosedness = Number(inputs.lonClosedness.value);
   }
+  updateBend();
+
+  inputs.latClosedness.addEventListener("input", updateBend);
+  inputs.lonClosedness.addEventListener("input", updateBend);
+
+  const grid = createGrid(36, 18);
+  llSphere = new B.Mesh("llSphere");
+  grid.applyToMesh(llSphere);
+  llSphere.material = llMat;
+
+  const gridBack = Object.assign(new B.VertexData(), {
+    indices: flipTriangles(grid.indices),
+    positions: grid.positions.map((val, i) => i % 3 == 2 ? -1 : val),
+    uvs: grid.uvs,
+  })
+  llSphereBack = new B.Mesh("llSphereBack");
+  gridBack.applyToMesh(llSphereBack);
+  llSphereBack.material = llBackMat;
 }
-
-const step = TAU / (4 * stepsPerRightAngle);
-
-const llPos = new Float32Array(nVertices * 3);
-
-const flatLimit = 1e-3;
-
-// TODO implement as vertex shader
-function setLL(latClosedness: number, lonClosedness: number) {
-  const latFlat = latClosedness < flatLimit;
-  const latStep = step * latClosedness;
-  const rLat = 1 / latClosedness;
-
-  const lonFlat = lonClosedness < flatLimit;
-  const lonStep = step * lonClosedness;
-  const rLon = 1 / lonClosedness;
-
-  let posIdx = 0;
-  for (let i = -stepsPerRightAngle; i <= stepsPerRightAngle; i++) {
-    const lat = i * latStep;
-    const y    = latFlat ? i * step : rLat *  Math.sin(lat);
-    const rXZ1 = latFlat ? 0        : rLat * (Math.cos(lat) - 1);
-    const rXZ2 = rLon + rXZ1;
-    for (let j = -2*stepsPerRightAngle; j <= 2*stepsPerRightAngle; j++) {
-      const lon = j * lonStep;
-      llPos[posIdx++] = 1 + (lonFlat ? rXZ1     : rXZ2 * Math.cos(lon) - rLon);
-      llPos[posIdx++] = y;
-      llPos[posIdx++] =      lonFlat ? j * step : rXZ2 * Math.sin(lon);
-    }
-  }
-}
-
-setLL(Number(latClosednessElem.value), Number(lonClosednessElem.value));
-
-const llVertexData = Object.assign(new B.VertexData(), {
-  indices,
-  positions: llPos,
-  uvs: llUVs,
-});
-
-llVertexData.applyToMesh(llMesh, true);
-llMesh.createNormals(true);
-
-const llBackVertexData = Object.assign(new B.VertexData(), {
-  indices: backIndices,
-  positions: llPos,
-});
-
-llBackVertexData.applyToMesh(llBackMesh, true);
-llBackMesh.createNormals(true);
-
-function repositionLL() {
-  setLL(Number(latClosednessElem.value), Number(lonClosednessElem.value));
-  llMesh.updateVerticesData(B.VertexBuffer.PositionKind, llPos);
-  llMesh.createNormals(true);
-  llBackMesh.updateVerticesData(B.VertexBuffer.PositionKind, llPos);
-  llBackMesh.createNormals(true);
-}
-
-// ------------- --------------  --------- ----------  ------------------  ----
-
-const latLonMaterial = new B.ShaderMaterial(nm("lat/lon mat"), scene, {
-  vertexSource: `
-    uniform float latClosedness;
-    uniform float lonClosedness;
-
-    uniform mat4 worldViewProjection;
-
-    // attribute vec3 position;
-    attribute vec2 uv;
-
-    varying vec2 vUV;
-
-    void main() {
-      float rLat = 1. / latClosedness;
-      float lat = (uv.y - 0.5) * ${TAU/2};
-      float latEffective = lat * latClosedness;
-      vec2 meridian =
-      latClosedness < 1e-3
-        //     radial (xz)                       axial (y)
-        ? vec2(0                               , lat                     )
-        : vec2((cos(latEffective) - 1.0) * rLat, sin(latEffective) * rLat);
-
-      float rLon = 1. / lonClosedness;
-      float lon = (uv.x - 0.5) * ${TAU};
-      float lonEffective = lon * lonClosedness;
-      float r_xz = rLon + meridian.x;
-      vec2 parallel =
-        lonClosedness < 1e-3
-        //     x                                 z
-        ? vec2(meridian.x                     , lon                     )
-        : vec2(r_xz * cos(lonEffective) - rLon, r_xz * sin(lonEffective));
-
-      gl_Position = worldViewProjection * vec4(parallel.x + 1.0, meridian.y, parallel.y, 1.0);
-      vUV = uv;
-    }
-  `,
-  fragmentSource: `
-    uniform sampler2D tx;
-
-    varying vec2 vUV;
-
-    void main() {
-      gl_FragColor = texture(tx, vUV);
-    }
-  `
-}, {
-  attributes: ["uv"],
-  uniforms: [
-    "latClosedness", "lonClosedness",
-    "worldViewProjection",
-    "tx",
-  ],
-});
-
-const uvs = new Float32Array(nVertices * 2);
-const positions = new Float32Array(nVertices * 3); // just needed for its size
-{
-  const nUSteps = 4 * stepsPerRightAngle;
-  const nVSteps = 2 * stepsPerRightAngle;
-  const uStep = 1 / nUSteps;
-  const vStep = 1 / nVSteps;
-  let uvIdx = 0;
-  for (let i = 0; i <= nVSteps; i++) {
-    for (let j = 0; j <= nUSteps; j++) {
-      uvs[uvIdx++] = j * uStep;
-      uvs[uvIdx++] = i * vStep;
-    }
-  }
-}
-
-latLonMaterial.setTexture("tx", baseTexture);
-
-latClosednessElem.addEventListener("input", setLL2Params);
-lonClosednessElem.addEventListener("input", setLL2Params);
-
-const ll2Mesh = new B.Mesh(nm("lat/lon 2"), scene);
-Object.assign(new B.VertexData(), {
-  indices,
-  positions,
-  normals: positions,
-  uvs,
-}).applyToMesh(ll2Mesh, true);
-ll2Mesh.material = latLonMaterial;
-
-const ll2BackMesh = new B.Mesh(nm("lat/lon 2 back"), scene);
-Object.assign(new B.VertexData(), {
-  indices: backIndices,
-  positions,
-  normals: positions,
-  uvs,
-}).applyToMesh(ll2BackMesh, true);
-ll2BackMesh.material = latLonMaterial;
-
-function setLL2Params() {
-  latLonMaterial.setFloat("latClosedness", Number(latClosednessElem.value));
-  latLonMaterial.setFloat("lonClosedness", Number(lonClosednessElem.value));
-  ll2Mesh.createNormals(true);
-}
-
-setLL2Params();
-
 
 // -----------------------------------------------------------------------------
 // Icosphere
@@ -357,7 +271,7 @@ const icoSphVertexData = createIcoVertices(12);
 icoSphVertexData.applyToMesh(icoSphMesh, true);
 
 function adaptBulge(): void {
-  const bulge = Number(icoBulgesElement.value);
+  const bulge = Number(inputs.icoBulges.value);
 
   // TODO
   // - computing full vtxData is not needed, only positions
@@ -375,6 +289,8 @@ function adaptBulge(): void {
 
 adaptBulge();
 
+inputs.icoBulges.addEventListener("input", adaptBulge);
+
 // -----------------------------------------------------------------------------
 // Icosahedron
 
@@ -386,23 +302,75 @@ icoMesh.material = icoMat;
 const icoBackMesh = new B.Mesh(nm("icosahedron back"), scene);
 icoBackMesh.material = backMat;
 
-const namedIndices: Record<string, number> = {};
-"abcdefghijklmnopqrLMNOPQRSTUVWX".split("").forEach((c, i) => namedIndices[c] = i);
+/*
+Net:
 
+    a       b       c       d       e
+   / \     / \     / \     / \     / \
+  /   \   /   \   /   \   /   \   /   \
+ /  0  \ /  1  \ /  2  \ /  3  \ /  4  \
+f-------g-------h-------i-------j-------k
+|\  5  / \  6  / \  7  / \  8  / \  9  /|
+| \   /   \   /   \   /   \   /   \   / |
+|14\ / 10  \ / 11  \ / 12  \ / 13  \ /14|
+l---m-------n-------o-------p-------q---r
+|19/ \ 15  / \ 16  / \ 17  / \ 18  / \19|
+| /   \   /   \   /   \   /   \   /   \ |
+|/     \ /     \ /     \ /     \ /     \|
+s       t       u       v       w       x
+
+UV mapping:
+
+1           -- L---M-------N-------O-------P-------Q---R
+1   - dv    -- |19/a\ 15  /b\ 16  /c\ 17  /d\ 18  /e\19|
+               | // \\   // \\   // \\   // \\   // \\ |
+               |//   \\ //   \\ //   \\ //   \\ //   \\|
+1/2 + dv/2  -- S/  0  \T/  1  \U/  2  \V/  3  \W/  4  \X
+1/2 - dv/2  -- f-------g-------h-------i-------j-------k
+               |\  5  / \  6  / \  7  / \  8  / \  9  /|
+               | \   /   \   /   \   /   \   /   \   / |
+               |14\ / 10  \ / 11  \ / 12  \ / 13  \ /14|
+0           -- l---m-------n-------o-------p-------q---r
+
+^         u    |   |   |   |   |   |   |   |   |   |   |
+|v       ---> 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0
+*/
+
+/**
+ * Which vertices exist?
+ * 
+ * Some vertices are duplicated (with lower/uppercase names)
+ * so that we can assign different uv coordinates to the copies.
+ */
+const namedIcoIndices: Record<string, number> = Object.fromEntries(
+  `
+    a   b   c   d   e
+  f   g   h   i   j   k
+  l m   n   o   p   q r
+  L M   N   O   P   Q R
+  S   T   U   V   W   X
+  `
+  .trim().split(/\s+/).map((c, i) => [c, i])
+);
+
+/** front triangles */
 const icoIndices = new Float32Array((20 + 2) * 3);
+/** back triangles */
 const icoBackIndices = new Float32Array((20 + 2) * 3);
 
 `
    fga ghb hic ijd jke
    fmg gnh hoi ipj jqk
  lmf mng noh opi pqj qrk
- LSM MTN NUO OVP PWQ QXR`
+ LSM MTN NUO OVP PWQ QXR
+`
 .trim().split(/\s+/).forEach(([c0, c1, c2], f) => {
-  icoBackIndices[3 * f + 0] = icoIndices[3 * f + 0] = namedIndices[c0];
-  icoBackIndices[3 * f + 2] = icoIndices[3 * f + 1] = namedIndices[c1];
-  icoBackIndices[3 * f + 1] = icoIndices[3 * f + 2] = namedIndices[c2];
+  icoBackIndices[3 * f + 0] = icoIndices[3 * f + 0] = namedIcoIndices[c0];
+  icoBackIndices[3 * f + 2] = icoIndices[3 * f + 1] = namedIcoIndices[c1];
+  icoBackIndices[3 * f + 1] = icoIndices[3 * f + 2] = namedIcoIndices[c2];
 });
 
+/** uv coordinates for vertices */
 const icoUVs = Float32Array.of(
   ...[   0.1,  0.3,  0.5,  0.7,  0.9   ].flatMap(u => [u,  1-dv   ]), // a-e
   ...[0.0,  0.2,  0.4,  0.6,  0.8,  1.0].flatMap(u => [u, (1-dv)/2]), // f-k
@@ -410,6 +378,60 @@ const icoUVs = Float32Array.of(
   ...[0, 0.1,  0.3,  0.5,  0.7,  0.9, 1].flatMap(u => [u,  1      ]), // L-R
   ...[0.0,  0.2,  0.4,  0.6,  0.8,  1.0].flatMap(u => [u, (1+dv)/2]), // S-X
 );
+
+const icoPos = new Float32Array(31*3);
+
+/**
+ * vertex positions
+ * 
+ * Not aligned with `icoPos`!
+ * 
+ * `lAux` and `rAux` are not part of the net/mesh, but are used to compute
+ * `l` and `r`.
+ */
+const icoPosAux: Record<string, V3> = Object.fromEntries(
+  "a b c d e f g h i j k lAux l m n o p q rAux r s t u v w x"
+  .split(/\s+/)
+  .map(name => [name, new V3()])
+);
+
+/** Map between `icoPos` and `icoPosAux` */
+const icoPosAuxMap = Object.keys(namedIcoIndices).map(name => name.toLowerCase());
+
+/**
+ * Vertex computation order, starting from given vertices `h`, `o`, and `i`.
+ *
+ * `n h o i` means that `isoPosAux.n` (the position of vertex `n`) is computed
+ * by rotating vertex `i` around the edge from vertex `h` to vertex `o`.
+ */
+const vertexSteps =
+`
+  n h o i
+  g h n o
+  m g n h
+  f g m n
+  lAux f m g
+  p o i h
+  j p i o
+  q p j i
+  k q j p
+  rAux q k j
+  a g f m
+  b h g n
+  c i h o
+  d j i p
+  e k j q
+  s lAux m f
+  t m n g
+  u n o h
+  v o p i
+  w p q j
+  x q rAux k
+`
+.trim()
+.split(/\r?\n/)
+.map(line => line.trim().split(/\s+/).map(name => icoPosAux[name]));
+
 
 /** How far above/below the equator are the non-pole vertices? */
 const height = Math.sqrt(1 / 5);
@@ -422,69 +444,60 @@ const dihedralAngle = Math.acos(-Math.sqrt(5)/3); // ~ 138.2°
  */
 const anglePart = 2 - dihedralAngle / (TAU / 4);
 
-const icoPos = new Float32Array(31*3);
+const mid_hi = new V3();
+const oHeight = new V3();
+const oHeightFlat = new V3();
+const slerp_o = new V3();
 
-function fillIcoPos(bend: number, shiftSouth: number) {
-  function nextVertex(a: V3, b: V3, c: V3) {
-    const mid_ab = a.add(b).scaleInPlace(.5);
-    const height = mid_ab.subtract(c);
-    const normal = a.subtract(c).cross(b.subtract(c)).normalize().scale(height.length());
-    const rotated = V3.SlerpToRef(height, normal, bend * anglePart, new V3());
-    return mid_ab.add(rotated);
+const mid_ab = new V3();
+const height_c = new V3();
+const a_minus_c = new V3();
+const b_minus_c = new V3();
+const normal_abc = new V3();
+const rotated = new V3();
+
+function adaptIcoPos(bend: number, shiftSouth: number) {
+  const ix = radius * Math.cos(TAU/10);
+  const iz = radius * Math.sin(TAU/10);
+  icoPosAux.h.set(ix,  height, -iz);
+  icoPosAux.i.set(ix,  height,  iz);
+
+  mid_hi.set(ix, height, 0);
+  oHeight.set(radius, -height, 0).subtractInPlace(mid_hi);
+  oHeightFlat.set(0, -oHeight.length(), 0);
+  mid_hi.addToRef(V3.SlerpToRef(oHeightFlat, oHeight, bend, slerp_o), icoPosAux.o);
+
+  const bendAnglePart = bend * anglePart;
+  for (const [out, a, b, c] of vertexSteps) {
+    V3.CenterToRef(a, b, mid_ab);
+    mid_ab.subtractToRef(c, height_c);
+    V3.CrossToRef(
+      a.subtractToRef(c, a_minus_c),
+      b.subtractToRef(c, b_minus_c),
+      normal_abc
+    ).normalize().scaleInPlace(height_c.length());
+    mid_ab.addToRef(
+      V3.SlerpToRef(height_c, normal_abc, bendAnglePart, rotated),
+      out,
+    );
   }
-
-  const mid_hi = v3(radius * Math.cos(TAU/10), height, 0);
-  const oHeight = v3(radius, -height, 0).subtract(mid_hi);
-  const oHeightFlat = v3(0, -oHeight.length(), 0);
-
-  const h_ = v3(radius * Math.cos(-TAU/10),  height, radius * Math.sin(-TAU/10));
-  const o_ = mid_hi.add(V3.SlerpToRef(oHeightFlat, oHeight, bend, new V3()));
-  const i_ = v3(radius * Math.cos( TAU/10),  height, radius * Math.sin( TAU/10));
-
-  const n_ = nextVertex(h_, o_, i_);
-  const g_ = nextVertex(h_, n_, o_);
-  const m_ = nextVertex(g_, n_, h_);
-  const f_ = nextVertex(g_, m_, n_);
-  const lAux = nextVertex(f_, m_, g_);
-  const l_ = m_.add(lAux).scale(0.5);
-
-  const p_ = nextVertex(o_, i_, h_);
-  const j_ = nextVertex(p_, i_, o_);
-  const q_ = nextVertex(p_, j_, i_);
-  const k_ = nextVertex(q_, j_, p_);
-  const rAux = nextVertex(q_, k_, j_);
-  const r_ = q_.add(rAux).scale(0.5);
-
-  const a_ = nextVertex(g_, f_, m_);
-  const b_ = nextVertex(h_, g_, n_);
-  const c_ = nextVertex(i_, h_, o_);
-  const d_ = nextVertex(j_, i_, p_);
-  const e_ = nextVertex(k_, j_, q_);
-
-  const s_ = nextVertex(lAux, m_, f_);
-  const t_ = nextVertex(m_, n_, g_);
-  const u_ = nextVertex(n_, o_, h_);
-  const v_ = nextVertex(o_, p_, i_);
-  const w_ = nextVertex(p_, q_, j_);
-  const x_ = nextVertex(q_, rAux, k_);
+  V3.CenterToRef(icoPosAux.m, icoPosAux.lAux, icoPosAux.l);
+  V3.CenterToRef(icoPosAux.q, icoPosAux.rAux, icoPosAux.r);
 
   const shiftX = shiftSouth * (1 - shiftSouth);
-  const shiftY = (c_.y - o_.y + .02) * shiftSouth;
+  const shiftY = (icoPosAux.c.y - icoPosAux.o.y + .02) * shiftSouth;
 
-  [
-      a_, b_, c_, d_, e_,
-   f_,  g_, h_, i_, j_,  k_,
-   l_,m_, n_, o_, p_, q_,r_,
-   l_,m_, n_, o_, p_, q_,r_,
-   s_,  t_, u_, v_, w_,  x_,
-  ].forEach(({x, y, z}, i) => {
+  // Now copy the computed positions from icoPosAux to icoPos
+  // (and apply the shift for the southern triangles).
+  icoPosAuxMap.forEach((name, i) => {
+    const {x, y, z} = icoPosAux[name];
     icoPos[3 * i + 0] = x + (i > 17 ? shiftX : 0);
     icoPos[3 * i + 1] = y + (i > 17 ? shiftY : 0);
     icoPos[3 * i + 2] = z;
   });
 }
 
-fillIcoPos(Number(icoClosednessElem.value), Number(icoShiftSouthElem.value));
+adaptIcoPos(Number(inputs.icoClosedness.value), Number(inputs.icoShiftSouth.value));
 
 const icoVertexData = Object.assign(new B.VertexData(), {
   indices: icoIndices,
@@ -502,21 +515,27 @@ icoVertexData.applyToMesh(icoMesh, true);
 icoBackVertexData.applyToMesh(icoBackMesh, true);
 
 function adaptIco() {
-  fillIcoPos(Number(icoClosednessElem.value), Number(icoShiftSouthElem.value));
+  adaptIcoPos(Number(inputs.icoClosedness.value), Number(inputs.icoShiftSouth.value));
   icoMesh.updateVerticesData(B.VertexBuffer.PositionKind, icoPos);
   icoBackMesh.updateVerticesData(B.VertexBuffer.PositionKind, icoPos);
 }
 
+inputs.icoClosedness.addEventListener("input", adaptIco);
+inputs.icoShiftSouth.addEventListener("input", adaptIco);
+
 // -----------------------------------------------------------------------------
 
 function setVisibility() {
-  ll2Mesh.isVisible = ll2BackMesh.isVisible = latLon2Element.checked;
-  llMesh.isVisible = llBackMesh.isVisible = latLonElement.checked;
-  icoSphMesh.isVisible = icoSphElement.checked;
-  icoMesh.isVisible = icoBackMesh.isVisible = icosahedronElement.checked;
+  llSphere.isVisible = llSphereBack.isVisible = inputs.latLon.checked;
+  icoSphMesh.isVisible = inputs.icoSph.checked;
+  icoMesh.isVisible = icoBackMesh.isVisible = inputs.icosahedron.checked;
 }
 
 setVisibility();
+
+inputs.latLon.addEventListener("change", setVisibility);
+inputs.icoSph.addEventListener("change", setVisibility);
+inputs.icosahedron.addEventListener("change", setVisibility);
 
 // -----------------------------------------------------------------------------
 
