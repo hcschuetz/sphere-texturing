@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Icosphere Sprite Sheet</title>
+    <style>
+      body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        margin: 0;
+        padding: 0;
+        font-size: calc(min(2vw, 3vh));
+        font-family: Arial, Helvetica, sans-serif;
+        background-color: #003;
+        color: white;
+      }
+      #renderCanvas {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 70vw;
+        height: 100vh;
+        &:focus {
+          outline: none;
+        }
+      }
+      .controlPanel {
+        z-index: 1;
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        display: grid;
+        grid-template-columns: auto auto;
+        justify-items: start;
+        column-gap: .5em;
+        row-gap: 1ex;
+      }
+      label {
+        padding: .3vw 0;
+      }
+    </style>
+      <script type="module" crossorigin src="/assets/index-wNV1MCDP.js"></script>
+    </head>
+  <body>
+    <div class="controlPanel">
+      <label for="latLon">latitude/longitude</label>
+      <input type="radio" id="latLon" name="gridType" value="latLon" checked>
+
+      <label for="lonClosedness">bend parallels</label>
+      <input type="range" id="lonClosedness" min="0" max="1" step="any" value="0">
+
+      <label for="latClosedness">bend meridians</label>
+      <input type="range" id="latClosedness" min="0" max="1" step="any" value="0">
+
+      <label for="icoSph">icosphere</label>
+      <input type="radio" id="icoSph" name="gridType" value="icosph">
+
+      <label for="icoBulges">bulges</label>
+      <input type="range" id="icoBulges" min="0" max="1" step="any" value="1">
+
+      <label for="icosahedron">icosahedron</label>
+      <input type="radio" id="icosahedron" name="gridType" value="icosahedron">
+
+      <label for="icoClosedness">bend edges</label>
+      <input type="range" id="icoClosedness" min="0" max="1" step="any" value="1">
+
+      <label for="icoShiftSouth">shift southern triangles</label>
+      <input type="range" id="icoShiftSouth" min="0" max="1" step="any" value="0">
+
+    </div>
+    <canvas id="renderCanvas"></canvas>
+  </body>
+</html>
