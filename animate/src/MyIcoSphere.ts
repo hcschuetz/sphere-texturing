@@ -118,11 +118,6 @@ export const createIcoVertices = (nSteps: number) => {
   const uvs: number[] = [];
   let idx = 0;
 
-  function emitVertex(pos: V3, u: number, v: number) {
-    positions.push(...pos.asArray());
-    uvs.push(u, v);
-  }
-
   const indices: number[] = [];
 
   function emitIcoFace(w: V3, p: V3, e: V3, u_w: number, v_we: number, v_p: number, flip: boolean): void {
@@ -132,10 +127,11 @@ export const createIcoVertices = (nSteps: number) => {
 
     for (let i = 0, jk = nSteps; jk >= 0; i++, jk--) {
       for (let j = 0, k = jk; k >= 0; j++, k--) {
-        emitVertex(
-          // This position is actually on the icosahedron face.  We leave it to the material
-          // to add a "bulge" over the face to produce a sphere.
-          p.scale(i).addInPlace(e.scale(j)).addInPlace(w.scale(k)).scale(1 / nSteps),
+        // This position is actually on the icosahedron face.  We leave it to the material
+        // to add a "bulge" over the face to produce a sphere.
+        const pos = p.scale(i).addInPlace(e.scale(j)).addInPlace(w.scale(k)).scale(1 / nSteps);
+        positions.push(pos.x, pos.y, pos.z);
+        uvs.push(
           u_w + (i * .1 + j * .2) / nSteps,
           (i * v_p + jk * v_we) / nSteps,
         );
