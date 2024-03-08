@@ -1,4 +1,5 @@
 import * as B from "@babylonjs/core";
+import * as BM from "@babylonjs/materials";
 import { createIcoSprite, createIcoVertices, dv } from "./MyIcoSphere";
 
 let nameCount = 0;
@@ -106,10 +107,34 @@ const icoMat = createStandardMaterial("icosphere mat", {
   diffuseTexture: createIcoSprite(nm("myIcoSprite"), 3600, baseTexture, scene),
 }, scene);
 
-const icoSphMat = createStandardMaterial("icosphere mat", {
-  specularColor: new B.Color3(.5, .5, .5),
-  diffuseTexture: createIcoSprite(nm("myIcoSprite"), 3600, baseTexture, scene),
-}, scene);
+// In an earlier version this functionality was implemented with a
+// MaterialPlugin instead of a CustomMaterial.
+// CustomMaterials seem to be simpler but less documented.
+// I leave this version in so we have both a MaterialPlugin example
+// (for the lat/lon sphere) and a CustomMaterial for the icosphere.
+
+class SphereMaterial extends BM.CustomMaterial {
+  constructor(name: string, scene: B.Scene) {
+    super(name, scene);
+
+    this.AddUniform("bulge", "float", 0.9)
+    .Vertex_Before_PositionUpdated(`
+      vec3 normalizedPos = normalize(position);
+      positionUpdated = mix(position, normalizedPos, bulge);
+    `)
+    .Vertex_Before_NormalUpdated(`
+      normalUpdated = mix(normal, normalizedPos, bulge);
+    `);
+  }
+
+  set bulge(value: number) {
+    // No idea why we have to do this incantation of  "onBindObservable".
+    // But I found this in a playground example and it seems to work.
+    this.onBindObservable.add(() => {
+      this.getEffect().setFloat("bulge", value);
+    });
+  }
+}
 
 // -----------------------------------------------------------------------------
 // Lat/Lon Sphere
@@ -246,54 +271,16 @@ const bendBackMaterial = new LLBendPluginMaterial(llBackMat);
 // -----------------------------------------------------------------------------
 // Icosphere
 
-class SphereBulgePluginMaterial extends B.MaterialPluginBase {
-  constructor(material: B.Material) {
-    super(material, "SphereBulge", 200, { SPHERE_BULGE: false });
-    this._enable(true);
-  }
-
-  getClassName() {
-    return "SphereBulgePluginMaterial";
-  }
-
-  prepareDefines(defines: B.MaterialDefines) {
-    defines.SPHERE_BULGE = true;
-    defines.NORMAL = true;
-  }
-
-  getUniforms() {
-    return {ubo: [{name: "bulge", size: 1, type: "float"}]};
-  }
-
-  bulge = 0.7;
-
-  bindForSubMesh(uniformBuffer: B.UniformBuffer) {
-    uniformBuffer.updateFloat("bulge", this.bulge);
-  }
-
-  getCustomCode(shaderType: string) {
-    return shaderType !== "vertex" ? null : {
-      CUSTOM_VERTEX_UPDATE_POSITION: `
-        vec3 normalizedPos = normalize(position);
-        positionUpdated = mix(position, normalizedPos, bulge);
-      `,
-      CUSTOM_VERTEX_UPDATE_NORMAL: `
-        normalUpdated = mix(normal, normalizedPos, bulge);
-      `,
-    }
-  }
-}
+const icoSphMat = Object.assign(new SphereMaterial("icosphere mat", scene), {
+  specularColor: new B.Color3(.5, .5, .5),
+  diffuseTexture: createIcoSprite(nm("myIcoSprite"), 3600, baseTexture, scene),
+});
 
 const icoSphMesh = new B.Mesh(nm("icosphere"), scene);
-
-const icoSphBulgePlugin = new SphereBulgePluginMaterial(icoSphMat);
 icoSphMesh.material = icoSphMat;
-
 icoSphMesh.rotate(B.Axis.Y, TAU/2);
 
-const icoSphVertexData = createIcoVertices(12);
-
-icoSphVertexData.applyToMesh(icoSphMesh, true);
+createIcoVertices(8).applyToMesh(icoSphMesh, true);
 
 // -----------------------------------------------------------------------------
 // Icosahedron
@@ -616,7 +603,7 @@ const configs: ConfigElem[] = [
   }),
   new ConfigVLine(29, 36, 55, flat => {
     setVisibility("icoSphere");
-    icoSphBulgePlugin.bulge = 1 - flat;
+    icoSphMat.bulge = 1 - flat;
   }),
   new ConfigVLine(29, 56, 75, open => {
     setVisibility("icosahedron");
