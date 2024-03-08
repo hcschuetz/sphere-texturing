@@ -603,20 +603,20 @@ function setVisibility(name: "lat/lon" | "icoSphere" | "icosahedron") {
 }
 
 const configs: ConfigElem[] = [
-  new ConfigDiamond(makePoint(25, 20), 15, (latClosedness, lonClosedness) => {
+  new ConfigDiamond(makePoint(29, 20), 15, (latClosedness, lonClosedness) => {
     setVisibility("lat/lon");
     Object.assign(bendMaterial, {latClosedness, lonClosedness});
     Object.assign(bendBackMaterial, {latClosedness, lonClosedness});
   }),
-  new ConfigVLine(25, 35, 55, flat => {
+  new ConfigVLine(29, 35, 55, flat => {
     setVisibility("icoSphere");
     icoSphBulgePlugin.bulge = 1 - flat;
   }),
-  new ConfigVLine(25, 55, 75, open => {
+  new ConfigVLine(29, 55, 75, open => {
     setVisibility("icosahedron");
     adaptIcoPos(1 - open, 0);
   }),
-  new ConfigVLine(25, 75, 95, icoShiftSouth => {
+  new ConfigVLine(29, 75, 95, icoShiftSouth => {
     setVisibility("icosahedron");
     adaptIcoPos(0, icoShiftSouth);
   }),
@@ -643,7 +643,7 @@ function selectPoint(p: Point) {
     .sort((a, b) => a.distSq - b.distSq)
     [0];
 
-  if (distSq > 9) {
+  if (distSq > 49) {
     return;
   }
 
@@ -658,7 +658,7 @@ selectorElement.addEventListener('mousemove', ev => selectPoint(
   .matrixTransform(selectorElement.getScreenCTM()!.inverse()),
 ));
 
-selectPoint(makePoint(25, 35));
+selectPoint(makePoint(29, 35));
 
 // -----------------------------------------------------------------------------
 

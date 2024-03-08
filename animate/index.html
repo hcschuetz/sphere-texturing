@@ -32,14 +32,19 @@
         position: fixed;
         top: 0;
         left: 0;
+        width: 70vh;
         height: 100vh;
-        width: 50vh;
+      }
+      text {
+        fill: white;
+        stroke-width: 0;
+        font: 3px sans-serif;
       }
     </style>
     </head>
   <body>
     <svg id="selector"
-      viewBox="0 0 50 100"
+      viewBox="0 0 70 100"
       xmlns="http://www.w3.org/2000/svg"
       stroke-width="1"
       stroke-linecap="round"
@@ -47,8 +52,24 @@
       stroke="#24f"
       fill="#24f"
     >
-      <circle cx="25" cy="55" r="0.7"/>
-      <circle cx="25" cy="75" r="0.7"/>
+      <text x="32" y="6">equirectangular map</text>
+      <text>
+        <tspan x="0" y="19.5">stretched</tspan>
+        <tspan x="0" y="22.5">parallels</tspan>
+      </text>
+      <text>
+        <tspan x="47" y="19.5">stretched</tspan>
+        <tspan x="47" y="22.5">meridians</tspan>
+      </text>
+      <text x="32" y="36">sphere</text>
+
+      <circle cx="29" cy="55" r="0.7"/>
+      <text x="32" y="56">icosahedron</text>
+
+      <circle cx="29" cy="75" r="0.7"/>
+      <text x="32" y="76">icosahedron net</text>
+
+      <text x="32" y="96">"icosprite"</text>
     </svg>
 
     <canvas id="renderCanvas"></canvas>
