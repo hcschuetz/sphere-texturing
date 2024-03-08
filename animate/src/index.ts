@@ -519,7 +519,15 @@ icoBackVertexData.applyToMesh(icoBackMesh, true);
 // -----------------------------------------------------------------------------
 
 type Point = DOMPointReadOnly;
-const makePoint = (x: number, y: number) => new DOMPointReadOnly(x, y);
+const point = (x: number, y: number) => new DOMPointReadOnly(x, y);
+
+function svgEl<K extends keyof SVGElementTagNameMap>(name: K, attrs: Object = {}) {
+  const el = document.createElementNS("http://www.w3.org/2000/svg", name);
+  for (const [name, value] of Object.entries(attrs)) {
+    el.setAttribute(name, value.toString());
+  }
+  return el;
+}
 
 interface ConfigElem {
   /** Provide hints to the user. */
@@ -541,16 +549,14 @@ class ConfigVLine implements ConfigElem {
   ) {}
 
   createSVG(): SVGElement {
-    const el = document.createElementNS("http://www.w3.org/2000/svg", "line");
-    el.setAttribute("x1", this.x.toString());
-    el.setAttribute("y1", this.yStart.toString());
-    el.setAttribute("x2", this.x.toString());
-    el.setAttribute("y2", this.yEnd.toString());
-    return el;
+    return svgEl("line", {
+      x1: this.x, y1: this.yStart,
+      x2: this.x, y2: this.yEnd,
+    })
   }
 
   getClosest(p: Point): Point {
-    return makePoint(this.x, [this.yStart, p.y, this.yEnd].sort((a, b) => a - b)[1]);
+    return point(this.x, [this.yStart, p.y, this.yEnd].sort((a, b) => a - b)[1]);
   }
 
   processValue(p: Point) {
@@ -566,14 +572,14 @@ class ConfigDiamond implements ConfigElem {
   ) {}
 
   createSVG(): SVGElement {
-    const el = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
-    el.setAttribute("points", [
-      `${this.center.x              },${this.center.y-this.halfDiag}`,
-      `${this.center.x-this.halfDiag},${this.center.y              }`,
-      `${this.center.x              },${this.center.y+this.halfDiag}`,
-      `${this.center.x+this.halfDiag},${this.center.y              }`
-    ].join(" "))
-    return el;
+    return svgEl("polygon", {
+      points: `
+        ${this.center.x              },${this.center.y-this.halfDiag}
+        ${this.center.x-this.halfDiag},${this.center.y              }
+        ${this.center.x              },${this.center.y+this.halfDiag}
+        ${this.center.x+this.halfDiag},${this.center.y              }
+      `
+    });
   }
 
   getClosest(p: Point): Point {
@@ -582,7 +588,7 @@ class ConfigDiamond implements ConfigElem {
     const yOff = (p.y - center.y);
     const a = Math.max(-halfDiag, Math.min(halfDiag, yOff - xOff));
     const b = Math.max(-halfDiag, Math.min(halfDiag, yOff + xOff));
-    return makePoint(center.x + (b - a)/2, center.y + (b + a)/2);
+    return point(center.x + (b - a)/2, center.y + (b + a)/2);
   }
 
   processValue(p: Point): void {
@@ -603,20 +609,20 @@ function setVisibility(name: "lat/lon" | "icoSphere" | "icosahedron") {
 }
 
 const configs: ConfigElem[] = [
-  new ConfigDiamond(makePoint(29, 20), 15, (latClosedness, lonClosedness) => {
+  new ConfigDiamond(point(29, 20), 15, (latClosedness, lonClosedness) => {
     setVisibility("lat/lon");
     Object.assign(bendMaterial, {latClosedness, lonClosedness});
     Object.assign(bendBackMaterial, {latClosedness, lonClosedness});
   }),
-  new ConfigVLine(29, 35, 55, flat => {
+  new ConfigVLine(29, 36, 55, flat => {
     setVisibility("icoSphere");
     icoSphBulgePlugin.bulge = 1 - flat;
   }),
-  new ConfigVLine(29, 55, 75, open => {
+  new ConfigVLine(29, 56, 75, open => {
     setVisibility("icosahedron");
     adaptIcoPos(1 - open, 0);
   }),
-  new ConfigVLine(29, 75, 95, icoShiftSouth => {
+  new ConfigVLine(29, 76, 95, icoShiftSouth => {
     setVisibility("icosahedron");
     adaptIcoPos(0, icoShiftSouth);
   }),
@@ -626,12 +632,41 @@ const selectorElement = document.querySelector<SVGSVGElement>("#selector")!;
 
 configs.forEach(config => selectorElement.append(config.createSVG()));
 
-const handleElement = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-handleElement.setAttribute("r", "1.5");
-handleElement.setAttribute("fill", "#808080");
-handleElement.setAttribute("stroke", "#fff");
-handleElement.setAttribute("stroke-width", "0.3");
+function label(labelText: string, {x, y}: Point) {
+  const text = svgEl("text");
+  labelText.split(/\r?\n/).forEach((line, i, array) => {
+    const tspan = svgEl("tspan", {x, y: y + 3*(i + 1 - array.length/2) - 0.5});
+    tspan.textContent = line;
+    text.append(tspan);
+  });
+  selectorElement.append(text);
+}
+
+label("equirectangular map", point(32, 5));
+label("stretched\nparallels", point(0, 20));
+label("stretched\nmeridians", point(47, 20));
+
+function labeledDot(labelText: string, p: Point) {
+  selectorElement.append(svgEl("circle", {cx: p.x, cy: p.y, r: 0.7}));
+  label(labelText, point(p.x + 3, p.y));
+}
+
+labeledDot("sphere", point(29, 35.5));
+labeledDot("icosahedron", point(29, 55.5));
+labeledDot("icosahedron net", point(29, 75.5));
+labeledDot("icosprite", point(29, 95.5));
+
+const handleElement = svgEl("circle", {
+  r: 1.5, fill: "#808080", stroke: "#fff", "stroke-width": 0.3
+})
 selectorElement.append(handleElement);
+
+const debugElem = svgEl("text", {x: 0, y: 87});
+selectorElement.append(debugElem);
+function debug(text: string) {
+  // debugElem.textContent = text;
+}
+
 
 function selectPoint(p: Point) {
   const {distSq, config, coords} =
@@ -650,13 +685,15 @@ function selectPoint(p: Point) {
   handleElement.setAttribute("cx", coords.x.toString());
   handleElement.setAttribute("cy", coords.y.toString());
 
+  debug(`(${coords.x.toFixed(2)},${coords.y.toFixed(2)})`);
+
   config.processValue(coords);
 }
 
 function selectRawPoint(ev: MouseEvent) {
   if (ev.buttons) {
     selectPoint(
-      makePoint(ev.clientX, ev.clientY)
+      point(ev.clientX, ev.clientY)
       .matrixTransform(selectorElement.getScreenCTM()!.inverse())
     );
   }
@@ -665,7 +702,7 @@ function selectRawPoint(ev: MouseEvent) {
 selectorElement.addEventListener("mousemove", selectRawPoint);
 selectorElement.addEventListener("mousedown", selectRawPoint);
 
-selectPoint(makePoint(29, 35));
+selectPoint(point(29, 35));
 
 // -----------------------------------------------------------------------------
 
