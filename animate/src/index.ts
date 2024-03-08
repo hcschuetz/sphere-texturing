@@ -521,17 +521,18 @@ icoBackVertexData.applyToMesh(icoBackMesh, true);
 type Point = DOMPointReadOnly;
 const makePoint = (x: number, y: number) => new DOMPointReadOnly(x, y);
 
-interface ConfigElem<T> {
+interface ConfigElem {
   createSVG(): SVGElement;
   getClosest(p: Point): Point;
-  getValue(p: Point): T;
+  processValue(p: Point): void;
 }
 
-class ConfigVLine implements ConfigElem<number> {
+class ConfigVLine implements ConfigElem {
   constructor(
     private x: number,
     private yStart: number,
     private yEnd: number,
+    private process: (val: number) => void,
   ) {}
 
   createSVG(): SVGElement {
@@ -547,16 +548,17 @@ class ConfigVLine implements ConfigElem<number> {
     return makePoint(this.x, [this.yStart, p.y, this.yEnd].sort((a, b) => a - b)[1]);
   }
 
-  getValue(p: Point) {
-    return (p.y - this.yStart) / (this.yEnd - this.yStart);
+  processValue(p: Point) {
+    this.process((p.y - this.yStart) / (this.yEnd - this.yStart));
   }
 }
 
-class ConfigDiamond implements ConfigElem<[number, number]> {
+class ConfigDiamond implements ConfigElem {
   constructor(
     private cx: number,
     private cy: number,
     private halfDiag: number,
+    private process: (a: number, b: number) => void,
   ) {}
 
   createSVG(): SVGElement {
@@ -579,26 +581,15 @@ class ConfigDiamond implements ConfigElem<[number, number]> {
     return makePoint(cx + (b - a)/2, cy + (b + a)/2);
   }
 
-  getValue(p: Point): [number, number] {
+  processValue(p: Point): void {
     const {cx, cy, halfDiag} = this;
     const xOff = (p.x - cx);
     const yOff = (p.y - cy);
-    const a = (Math.max(-halfDiag, Math.min(halfDiag, yOff - xOff)) / halfDiag + 1) / 2;
-    const b = (Math.max(-halfDiag, Math.min(halfDiag, yOff + xOff)) / halfDiag + 1) / 2;
-    return [a, b];
+    const a = Math.max(-halfDiag, Math.min(halfDiag, yOff - xOff));
+    const b = Math.max(-halfDiag, Math.min(halfDiag, yOff + xOff));
+    this.process((a / halfDiag + 1) / 2, (b / halfDiag + 1) / 2);
   }
 }
-
-class ConfigTransform<T, U> implements ConfigElem<U> {
-  constructor(
-    private base: ConfigElem<T>,
-    private transform: (from: T) => U,
-  ) {}
-  createSVG(): SVGElement { return this.base.createSVG();}
-  getClosest(p: Point): Point {return this.base.getClosest(p)}
-  getValue(p: Point): U {return this.transform(this.base.getValue(p));}
-}
-
 
 function setVisibility(name: "lat/lon" | "icoSphere" | "icosahedron") {
   llSphere.isVisible = llSphereBack.isVisible = name === "lat/lon";
@@ -606,36 +597,24 @@ function setVisibility(name: "lat/lon" | "icoSphere" | "icosahedron") {
   icoMesh.isVisible = icoBackMesh.isVisible = name === "icosahedron";
 }
 
-const configs: ConfigElem<void>[] = [
-  new ConfigTransform(
-    new ConfigDiamond(25, 20, 15),
-    ([latClosedness, lonClosedness]) => {
-      setVisibility("lat/lon");
-      Object.assign(bendMaterial, {latClosedness, lonClosedness});
-      Object.assign(bendBackMaterial, {latClosedness, lonClosedness});
-    }
-  ),
-  new ConfigTransform(
-    new ConfigVLine(25, 35, 55),
-    flat => {
-      setVisibility("icoSphere");
-      icoSphBulgePlugin.bulge = 1 - flat;
-    }
-  ),
-  new ConfigTransform(
-    new ConfigVLine(25, 55, 75),
-    open => {
-      setVisibility("icosahedron");
-      adaptIcoPos(1 - open, 0);
-    }
-  ),
-  new ConfigTransform(
-    new ConfigVLine(25, 75, 95),
-    icoShiftSouth => {
-      setVisibility("icosahedron");
-      adaptIcoPos(0, icoShiftSouth);
-    }
-  ),
+const configs: ConfigElem[] = [
+  new ConfigDiamond(25, 20, 15, (latClosedness, lonClosedness) => {
+    setVisibility("lat/lon");
+    Object.assign(bendMaterial, {latClosedness, lonClosedness});
+    Object.assign(bendBackMaterial, {latClosedness, lonClosedness});
+  }),
+  new ConfigVLine(25, 35, 55, flat => {
+    setVisibility("icoSphere");
+    icoSphBulgePlugin.bulge = 1 - flat;
+  }),
+  new ConfigVLine(25, 55, 75, open => {
+    setVisibility("icosahedron");
+    adaptIcoPos(1 - open, 0);
+  }),
+  new ConfigVLine(25, 75, 95, icoShiftSouth => {
+    setVisibility("icosahedron");
+    adaptIcoPos(0, icoShiftSouth);
+  }),
 ];
 
 const selectorElement = document.querySelector<SVGSVGElement>("#selector")!;
@@ -666,7 +645,7 @@ function selectPoint(p: Point) {
   handleElement.setAttribute("cx", coords.x.toString());
   handleElement.setAttribute("cy", coords.y.toString());
 
-  config.getValue(coords);
+  config.processValue(coords);
 }
 
 const selectorMatrix = selectorElement.getScreenCTM()!.inverse();
