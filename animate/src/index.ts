@@ -76,12 +76,6 @@ if (false) {
 }
 
 // -----------------------------------------------------------------------------
-
-const inputs = Object.fromEntries(
-  [...document.querySelectorAll("input")].map(el => [el.id, el])
-);
-
-// -----------------------------------------------------------------------------
 // Textures/Sprites
 
 // See https://en.wikipedia.org/wiki/File:Blue_Marble_Next_Generation_%2B_topography_%2B_bathymetry.jpg
@@ -231,19 +225,9 @@ function createGrid(uSteps: number, vSteps: number) {
 
 let llSphere: B.Mesh;
 let llSphereBack: B.Mesh;
+const bendMaterial = new LLBendPluginMaterial(llMat);
+const bendBackMaterial = new LLBendPluginMaterial(llBackMat);
 {
-  const bendMaterial = new LLBendPluginMaterial(llMat);
-  const bendBackMaterial = new LLBendPluginMaterial(llBackMat);
-
-  function updateBend() {
-    bendMaterial.latClosedness = bendBackMaterial.latClosedness = Number(inputs.latClosedness.value);
-    bendMaterial.lonClosedness = bendBackMaterial.lonClosedness = Number(inputs.lonClosedness.value);
-  }
-  updateBend();
-
-  inputs.latClosedness.addEventListener("input", updateBend);
-  inputs.lonClosedness.addEventListener("input", updateBend);
-
   const grid = createGrid(36, 18);
   llSphere = new B.Mesh("llSphere");
   grid.applyToMesh(llSphere);
@@ -310,14 +294,6 @@ icoSphMesh.rotate(B.Axis.Y, TAU/2);
 const icoSphVertexData = createIcoVertices(12);
 
 icoSphVertexData.applyToMesh(icoSphMesh, true);
-
-function adaptBulge(): void {
-  icoSphBulgePlugin.bulge = Number(inputs.icoBulges.value);
-}
-
-adaptBulge();
-
-inputs.icoBulges.addEventListener("input", adaptBulge);
 
 // -----------------------------------------------------------------------------
 // Icosahedron
@@ -520,9 +496,10 @@ function adaptIcoPos(bend: number, shiftSouth: number) {
     icoPos[3 * i + 1] = y + (i > 17 ? shiftY : 0);
     icoPos[3 * i + 2] = z;
   });
-}
 
-adaptIcoPos(Number(inputs.icoClosedness.value), Number(inputs.icoShiftSouth.value));
+  icoMesh.updateVerticesData(B.VertexBuffer.PositionKind, icoPos);
+  icoBackMesh.updateVerticesData(B.VertexBuffer.PositionKind, icoPos);
+}
 
 const icoVertexData = Object.assign(new B.VertexData(), {
   indices: icoIndices,
@@ -539,28 +516,166 @@ const icoBackVertexData = Object.assign(new B.VertexData(), {
 icoVertexData.applyToMesh(icoMesh, true);
 icoBackVertexData.applyToMesh(icoBackMesh, true);
 
-function adaptIco() {
-  adaptIcoPos(Number(inputs.icoClosedness.value), Number(inputs.icoShiftSouth.value));
-  icoMesh.updateVerticesData(B.VertexBuffer.PositionKind, icoPos);
-  icoBackMesh.updateVerticesData(B.VertexBuffer.PositionKind, icoPos);
-}
-
-inputs.icoClosedness.addEventListener("input", adaptIco);
-inputs.icoShiftSouth.addEventListener("input", adaptIco);
-
 // -----------------------------------------------------------------------------
 
-function setVisibility() {
-  llSphere.isVisible = llSphereBack.isVisible = inputs.latLon.checked;
-  icoSphMesh.isVisible = inputs.icoSph.checked;
-  icoMesh.isVisible = icoBackMesh.isVisible = inputs.icosahedron.checked;
+const makePoint = (x: number, y: number) => new DOMPointReadOnly(x, y);
+
+interface ConfigElem<T> {
+  createSVG(): SVGElement;
+  getClosest(x: number, y: number): [number, number];
+  getValue(x: number, y: number): T;
 }
 
-setVisibility();
+class ConfigVLine implements ConfigElem<number> {
+  constructor(
+    private x: number,
+    private yStart: number,
+    private yEnd: number,
+  ) {}
 
-inputs.latLon.addEventListener("input", setVisibility);
-inputs.icoSph.addEventListener("input", setVisibility);
-inputs.icosahedron.addEventListener("input", setVisibility);
+  createSVG(): SVGElement {
+    const el = document.createElementNS("http://www.w3.org/2000/svg", "line");
+    el.setAttribute("x1", this.x.toString());
+    el.setAttribute("y1", this.yStart.toString());
+    el.setAttribute("x2", this.x.toString());
+    el.setAttribute("y2", this.yEnd.toString());
+    return el;
+  }
+
+  getClosest(_x: number, y: number): [number, number] {
+    return [this.x, [this.yStart, y, this.yEnd].sort((a, b) => a - b)[1]];
+  }
+
+  getValue(_x: number, y: number) {
+    return (y - this.yStart) / (this.yEnd - this.yStart);
+  }
+}
+
+class ConfigDiamond implements ConfigElem<[number, number]> {
+  constructor(
+    private cx: number,
+    private cy: number,
+    private halfDiag: number,
+  ) {}
+
+  createSVG(): SVGElement {
+    const el = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+    el.setAttribute("points", [
+      `${this.cx              },${this.cy-this.halfDiag}`,
+      `${this.cx-this.halfDiag},${this.cy              }`,
+      `${this.cx              },${this.cy+this.halfDiag}`,
+      `${this.cx+this.halfDiag},${this.cy              }`
+    ].join(" "))
+    return el;
+  }
+
+  getClosest(x: number, y: number): [number, number] {
+    const {cx, cy, halfDiag} = this;
+    const xOff = (x - cx);
+    const yOff = (y - cy);
+    const a = Math.max(-halfDiag, Math.min(halfDiag, yOff - xOff));
+    const b = Math.max(-halfDiag, Math.min(halfDiag, yOff + xOff));
+    return [cx + (b - a)/2, cy + (b + a)/2];
+  }
+
+  getValue(x: number, y: number): [number, number] {
+    const {cx, cy, halfDiag} = this;
+    const xOff = (x - cx);
+    const yOff = (y - cy);
+    const a = (Math.max(-halfDiag, Math.min(halfDiag, yOff - xOff)) / halfDiag + 1) / 2;
+    const b = (Math.max(-halfDiag, Math.min(halfDiag, yOff + xOff)) / halfDiag + 1) / 2;
+    return [a, b];
+  }
+}
+
+class ConfigTransform<T, U> implements ConfigElem<U> {
+  constructor(
+    private base: ConfigElem<T>,
+    private transform: (from: T) => U,
+  ) {}
+  createSVG(): SVGElement { return this.base.createSVG();}
+  getClosest(x: number, y: number): [number, number] {return this.base.getClosest(x, y)}
+  getValue(x: number, y: number): U {return this.transform(this.base.getValue(x, y));}
+}
+
+
+function setVisibility(name: "lat/lon" | "icoSphere" | "icosahedron") {
+  llSphere.isVisible = llSphereBack.isVisible = name === "lat/lon";
+  icoSphMesh.isVisible = name === "icoSphere";
+  icoMesh.isVisible = icoBackMesh.isVisible = name === "icosahedron";
+}
+
+const configs: ConfigElem<void>[] = [
+  new ConfigTransform(
+    new ConfigDiamond(25, 20, 15),
+    ([latClosedness, lonClosedness]) => {
+      setVisibility("lat/lon");
+      Object.assign(bendMaterial, {latClosedness, lonClosedness});
+      Object.assign(bendBackMaterial, {latClosedness, lonClosedness});
+    }
+  ),
+  new ConfigTransform(
+    new ConfigVLine(25, 35, 55),
+    flat => {
+      setVisibility("icoSphere");
+      icoSphBulgePlugin.bulge = 1 - flat;
+    }
+  ),
+  new ConfigTransform(
+    new ConfigVLine(25, 55, 75),
+    open => {
+      setVisibility("icosahedron");
+      adaptIcoPos(1 - open, 0);
+    }
+  ),
+  new ConfigTransform(
+    new ConfigVLine(25, 75, 95),
+    icoShiftSouth => {
+      setVisibility("icosahedron");
+      adaptIcoPos(0, icoShiftSouth);
+    }
+  ),
+];
+
+const selectorElement = document.querySelector<SVGSVGElement>("#selector")!;
+
+configs.forEach(config => selectorElement.append(config.createSVG()));
+
+const handleElement = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+handleElement.setAttribute("r", "1.5");
+handleElement.setAttribute("fill", "#808080");
+handleElement.setAttribute("stroke", "#fff");
+handleElement.setAttribute("stroke-width", "0.3");
+selectorElement.append(handleElement);
+
+function selectPoint(p: DOMPointReadOnly) {
+  const {distSq, config, coords: [xClosest, yClosest]} =
+    configs.map(config => {
+      const coords = config.getClosest(p.x, p.y);
+      const [xClosest, yClosest] = coords;
+      const distSq = (xClosest - p.x)**2 + (yClosest - p.y)**2;
+      return {distSq, config, coords};
+    })
+    .sort((a, b) => a.distSq - b.distSq)
+    [0];
+
+  if (distSq > 9) {
+    return;
+  }
+
+  handleElement.setAttribute("cx", xClosest.toString());
+  handleElement.setAttribute("cy", yClosest.toString());
+
+  config.getValue(xClosest, yClosest);
+}
+
+const selectorMatrix = selectorElement.getScreenCTM()!.inverse();
+
+selectorElement.addEventListener('mousemove', ev => selectPoint(
+  makePoint(ev.clientX, ev.clientY).matrixTransform(selectorMatrix),
+));
+
+selectPoint(makePoint(25, 35));
 
 // -----------------------------------------------------------------------------
 
