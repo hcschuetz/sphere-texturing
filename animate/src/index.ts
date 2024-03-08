@@ -518,12 +518,13 @@ icoBackVertexData.applyToMesh(icoBackMesh, true);
 
 // -----------------------------------------------------------------------------
 
+type Point = DOMPointReadOnly;
 const makePoint = (x: number, y: number) => new DOMPointReadOnly(x, y);
 
 interface ConfigElem<T> {
   createSVG(): SVGElement;
-  getClosest(x: number, y: number): [number, number];
-  getValue(x: number, y: number): T;
+  getClosest(p: Point): Point;
+  getValue(p: Point): T;
 }
 
 class ConfigVLine implements ConfigElem<number> {
@@ -542,12 +543,12 @@ class ConfigVLine implements ConfigElem<number> {
     return el;
   }
 
-  getClosest(_x: number, y: number): [number, number] {
-    return [this.x, [this.yStart, y, this.yEnd].sort((a, b) => a - b)[1]];
+  getClosest(p: Point): Point {
+    return makePoint(this.x, [this.yStart, p.y, this.yEnd].sort((a, b) => a - b)[1]);
   }
 
-  getValue(_x: number, y: number) {
-    return (y - this.yStart) / (this.yEnd - this.yStart);
+  getValue(p: Point) {
+    return (p.y - this.yStart) / (this.yEnd - this.yStart);
   }
 }
 
@@ -569,19 +570,19 @@ class ConfigDiamond implements ConfigElem<[number, number]> {
     return el;
   }
 
-  getClosest(x: number, y: number): [number, number] {
+  getClosest(p: Point): Point {
     const {cx, cy, halfDiag} = this;
-    const xOff = (x - cx);
-    const yOff = (y - cy);
+    const xOff = (p.x - cx);
+    const yOff = (p.y - cy);
     const a = Math.max(-halfDiag, Math.min(halfDiag, yOff - xOff));
     const b = Math.max(-halfDiag, Math.min(halfDiag, yOff + xOff));
-    return [cx + (b - a)/2, cy + (b + a)/2];
+    return makePoint(cx + (b - a)/2, cy + (b + a)/2);
   }
 
-  getValue(x: number, y: number): [number, number] {
+  getValue(p: Point): [number, number] {
     const {cx, cy, halfDiag} = this;
-    const xOff = (x - cx);
-    const yOff = (y - cy);
+    const xOff = (p.x - cx);
+    const yOff = (p.y - cy);
     const a = (Math.max(-halfDiag, Math.min(halfDiag, yOff - xOff)) / halfDiag + 1) / 2;
     const b = (Math.max(-halfDiag, Math.min(halfDiag, yOff + xOff)) / halfDiag + 1) / 2;
     return [a, b];
@@ -594,8 +595,8 @@ class ConfigTransform<T, U> implements ConfigElem<U> {
     private transform: (from: T) => U,
   ) {}
   createSVG(): SVGElement { return this.base.createSVG();}
-  getClosest(x: number, y: number): [number, number] {return this.base.getClosest(x, y)}
-  getValue(x: number, y: number): U {return this.transform(this.base.getValue(x, y));}
+  getClosest(p: Point): Point {return this.base.getClosest(p)}
+  getValue(p: Point): U {return this.transform(this.base.getValue(p));}
 }
 
 
@@ -648,12 +649,11 @@ handleElement.setAttribute("stroke", "#fff");
 handleElement.setAttribute("stroke-width", "0.3");
 selectorElement.append(handleElement);
 
-function selectPoint(p: DOMPointReadOnly) {
-  const {distSq, config, coords: [xClosest, yClosest]} =
+function selectPoint(p: Point) {
+  const {distSq, config, coords} =
     configs.map(config => {
-      const coords = config.getClosest(p.x, p.y);
-      const [xClosest, yClosest] = coords;
-      const distSq = (xClosest - p.x)**2 + (yClosest - p.y)**2;
+      const coords = config.getClosest(p);
+      const distSq = (coords.x - p.x)**2 + (coords.y - p.y)**2;
       return {distSq, config, coords};
     })
     .sort((a, b) => a.distSq - b.distSq)
@@ -663,10 +663,10 @@ function selectPoint(p: DOMPointReadOnly) {
     return;
   }
 
-  handleElement.setAttribute("cx", xClosest.toString());
-  handleElement.setAttribute("cy", yClosest.toString());
+  handleElement.setAttribute("cx", coords.x.toString());
+  handleElement.setAttribute("cy", coords.y.toString());
 
-  config.getValue(xClosest, yClosest);
+  config.getValue(coords);
 }
 
 const selectorMatrix = selectorElement.getScreenCTM()!.inverse();
