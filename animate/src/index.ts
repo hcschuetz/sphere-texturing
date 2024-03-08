@@ -653,10 +653,17 @@ function selectPoint(p: Point) {
   config.processValue(coords);
 }
 
-selectorElement.addEventListener('mousemove', ev => selectPoint(
-  makePoint(ev.clientX, ev.clientY)
-  .matrixTransform(selectorElement.getScreenCTM()!.inverse()),
-));
+function selectRawPoint(ev: MouseEvent) {
+  if (ev.buttons) {
+    selectPoint(
+      makePoint(ev.clientX, ev.clientY)
+      .matrixTransform(selectorElement.getScreenCTM()!.inverse())
+    );
+  }
+}
+
+selectorElement.addEventListener("mousemove", selectRawPoint);
+selectorElement.addEventListener("mousedown", selectRawPoint);
 
 selectPoint(makePoint(29, 35));
 
