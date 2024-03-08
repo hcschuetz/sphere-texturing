@@ -560,8 +560,7 @@ class ConfigVLine implements ConfigElem {
 
 class ConfigDiamond implements ConfigElem {
   constructor(
-    private cx: number,
-    private cy: number,
+    private center: Point,
     private halfDiag: number,
     private process: (a: number, b: number) => void,
   ) {}
@@ -569,30 +568,31 @@ class ConfigDiamond implements ConfigElem {
   createSVG(): SVGElement {
     const el = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
     el.setAttribute("points", [
-      `${this.cx              },${this.cy-this.halfDiag}`,
-      `${this.cx-this.halfDiag},${this.cy              }`,
-      `${this.cx              },${this.cy+this.halfDiag}`,
-      `${this.cx+this.halfDiag},${this.cy              }`
+      `${this.center.x              },${this.center.y-this.halfDiag}`,
+      `${this.center.x-this.halfDiag},${this.center.y              }`,
+      `${this.center.x              },${this.center.y+this.halfDiag}`,
+      `${this.center.x+this.halfDiag},${this.center.y              }`
     ].join(" "))
     return el;
   }
 
   getClosest(p: Point): Point {
-    const {cx, cy, halfDiag} = this;
-    const xOff = (p.x - cx);
-    const yOff = (p.y - cy);
+    const {center, halfDiag} = this;
+    const xOff = (p.x - center.x);
+    const yOff = (p.y - center.y);
     const a = Math.max(-halfDiag, Math.min(halfDiag, yOff - xOff));
     const b = Math.max(-halfDiag, Math.min(halfDiag, yOff + xOff));
-    return makePoint(cx + (b - a)/2, cy + (b + a)/2);
+    return makePoint(center.x + (b - a)/2, center.y + (b + a)/2);
   }
 
   processValue(p: Point): void {
-    const {cx, cy, halfDiag} = this;
-    const xOff = (p.x - cx);
-    const yOff = (p.y - cy);
-    const a = Math.max(-halfDiag, Math.min(halfDiag, yOff - xOff));
-    const b = Math.max(-halfDiag, Math.min(halfDiag, yOff + xOff));
-    this.process((a / halfDiag + 1) / 2, (b / halfDiag + 1) / 2);
+    const {center, halfDiag} = this;
+    const xOff = (p.x - center.x);
+    const yOff = (p.y - center.y);
+    this.process(
+      ((yOff - xOff) / halfDiag + 1) / 2,
+      ((yOff + xOff) / halfDiag + 1) / 2,
+    );
   }
 }
 
@@ -603,7 +603,7 @@ function setVisibility(name: "lat/lon" | "icoSphere" | "icosahedron") {
 }
 
 const configs: ConfigElem[] = [
-  new ConfigDiamond(25, 20, 15, (latClosedness, lonClosedness) => {
+  new ConfigDiamond(makePoint(25, 20), 15, (latClosedness, lonClosedness) => {
     setVisibility("lat/lon");
     Object.assign(bendMaterial, {latClosedness, lonClosedness});
     Object.assign(bendBackMaterial, {latClosedness, lonClosedness});
