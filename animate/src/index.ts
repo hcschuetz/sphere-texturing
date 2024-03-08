@@ -653,10 +653,9 @@ function selectPoint(p: Point) {
   config.processValue(coords);
 }
 
-const selectorMatrix = selectorElement.getScreenCTM()!.inverse();
-
 selectorElement.addEventListener('mousemove', ev => selectPoint(
-  makePoint(ev.clientX, ev.clientY).matrixTransform(selectorMatrix),
+  makePoint(ev.clientX, ev.clientY)
+  .matrixTransform(selectorElement.getScreenCTM()!.inverse()),
 ));
 
 selectPoint(makePoint(25, 35));
