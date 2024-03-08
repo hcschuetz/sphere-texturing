@@ -522,8 +522,13 @@ type Point = DOMPointReadOnly;
 const makePoint = (x: number, y: number) => new DOMPointReadOnly(x, y);
 
 interface ConfigElem {
+  /** Provide hints to the user. */
   createSVG(): SVGElement;
+
+  /** The point in this element that is closest to the given point. */
   getClosest(p: Point): Point;
+
+  /** Apply the given point.  (It will be in this element.) */
   processValue(p: Point): void;
 }
 
