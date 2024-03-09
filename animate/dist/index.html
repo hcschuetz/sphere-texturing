@@ -26,50 +26,34 @@
           outline: none;
         }
       }
-      .controlPanel {
-        z-index: 1;
+      #selector {
+        z-index: 2;
         position: fixed;
-        top: 20px;
-        left: 20px;
-        display: grid;
-        grid-template-columns: auto auto;
-        justify-items: start;
-        column-gap: .5em;
-        row-gap: 1ex;
+        top: 0;
+        left: 0;
+        width: 70vh;
+        height: 100vh;
       }
-      label {
-        padding: .3vw 0;
+      text {
+        fill: white;
+        stroke-width: 0;
+        font: 3px sans-serif;
       }
     </style>
-      <script type="module" crossorigin src="./assets/index-wNV1MCDP.js"></script>
+      <script type="module" crossorigin src="./assets/index-BXT3T-W9.js"></script>
     </head>
   <body>
-    <div class="controlPanel">
-      <label for="latLon">latitude/longitude</label>
-      <input type="radio" id="latLon" name="gridType" value="latLon" checked>
+    <svg id="selector"
+      viewBox="0 0 70 100"
+      xmlns="http://www.w3.org/2000/svg"
+      stroke-width="1"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke="#24f"
+      fill="#24f"
+    >
+    </svg>
 
-      <label for="lonClosedness">bend parallels</label>
-      <input type="range" id="lonClosedness" min="0" max="1" step="any" value="0">
-
-      <label for="latClosedness">bend meridians</label>
-      <input type="range" id="latClosedness" min="0" max="1" step="any" value="0">
-
-      <label for="icoSph">icosphere</label>
-      <input type="radio" id="icoSph" name="gridType" value="icosph">
-
-      <label for="icoBulges">bulges</label>
-      <input type="range" id="icoBulges" min="0" max="1" step="any" value="1">
-
-      <label for="icosahedron">icosahedron</label>
-      <input type="radio" id="icosahedron" name="gridType" value="icosahedron">
-
-      <label for="icoClosedness">bend edges</label>
-      <input type="range" id="icoClosedness" min="0" max="1" step="any" value="1">
-
-      <label for="icoShiftSouth">shift southern triangles</label>
-      <input type="range" id="icoShiftSouth" min="0" max="1" step="any" value="0">
-
-    </div>
     <canvas id="renderCanvas"></canvas>
   </body>
 </html>
