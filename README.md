@@ -8,6 +8,13 @@ This repository consists of these sub-projects:
   ([source](./lab/), [web app](https://hcschuetz.github.io/octasphere/lab/dist/))
 - The "earth" project for experimenting with texture mappings
   ([source](./earth/), [web app](https://hcschuetz.github.io/octasphere/earth/dist/))
+- the "map transformations" project experimenting with shape and texture
+  transformations
+  ([source](./map-transformations/),
+  [web app](https://hcschuetz.github.io/octasphere/map-transformations/dist/))
+
+(While this repository started out with investigations of the octasphere,
+it meanwhile also contains quite some icosphere-related code.)
 
 Now for an explanation what this is all about:
 
