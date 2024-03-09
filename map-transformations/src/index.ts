@@ -166,7 +166,7 @@ const flipTriangles = (input: B.IndicesArray) =>
 
 function createGrid(uSteps: number, vSteps: number) {
   const nVertices = (uSteps + 1) * (vSteps + 1);
-  const positions = new Float32Array(nVertices * 3); // not really used, just for its size
+  const positions = new Float32Array(nVertices * 3);
   const uvs = new Float32Array(nVertices * 2);
   const indices = new Uint32Array(6 * uSteps * vSteps);
 
