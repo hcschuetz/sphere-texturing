@@ -77,7 +77,7 @@ if (false) {
 }
 
 // -----------------------------------------------------------------------------
-// Textures/Sprites
+// Base Texture
 
 // See https://en.wikipedia.org/wiki/File:Blue_Marble_Next_Generation_%2B_topography_%2B_bathymetry.jpg
 // for origin (NASA) and copyright (public domain).
@@ -87,130 +87,78 @@ const baseTexture = Object.assign(new B.Texture(url, scene, true), {
   wrapV: B.Texture.CLAMP_ADDRESSMODE,
 });
 
-const llBackMat = createStandardMaterial("back mat", {
-  diffuseColor : new B.Color3(.5, .5, .5),
-  specularColor: new B.Color3(.5, .5, .5),
-}, scene);
-
-const backMat = createStandardMaterial("back mat", {
-  diffuseColor : new B.Color3(.5, .5, .5),
-  specularColor: new B.Color3(.5, .5, .5),
-}, scene);
-
-const llMat = createStandardMaterial("latLon sphere mat", {
-  specularColor: new B.Color3(.5, .5, .5),
-  diffuseTexture: baseTexture,
-}, scene);
-
-const icoMat = createStandardMaterial("icosphere mat", {
-  specularColor: new B.Color3(.5, .5, .5),
-  diffuseTexture: createIcoSprite(nm("myIcoSprite"), 3600, baseTexture, scene),
-}, scene);
-
-// In an earlier version this functionality was implemented with a
-// MaterialPlugin instead of a CustomMaterial.
-// CustomMaterials seem to be simpler but less documented.
-// I leave this version in so we have both a MaterialPlugin example
-// (for the lat/lon sphere) and a CustomMaterial for the icosphere.
-
-class SphereMaterial extends BM.CustomMaterial {
-  constructor(name: string, scene: B.Scene) {
-    super(name, scene);
-
-    this.AddUniform("bulge", "float", 0.9)
-    .Vertex_Before_PositionUpdated(`
-      vec3 normalizedPos = normalize(position);
-      positionUpdated = mix(position, normalizedPos, bulge);
-    `)
-    .Vertex_Before_NormalUpdated(`
-      normalUpdated = mix(normal, normalizedPos, bulge);
-    `);
-  }
-
-  set bulge(value: number) {
-    // No idea why we have to do this incantation of  "onBindObservable".
-    // But I found this in a playground example and it seems to work.
-    this.onBindObservable.add(() => {
-      this.getEffect().setFloat("bulge", value);
-    });
-  }
-}
+const icoSprite = createIcoSprite(nm("myIcoSprite"), 3600, baseTexture, scene);
 
 // -----------------------------------------------------------------------------
 // Lat/Lon Sphere
 
-class LLBendPluginMaterial extends B.MaterialPluginBase {
-  constructor(material: B.Material) {
-    super(material, "LLBend", 200, { LL_BEND: false });
-    this._enable(true);
+class LatLonMaterial extends BM.CustomMaterial {
+  constructor(name: string, scene: B.Scene) {
+    super(name, scene);
+
+    this
+    .AddUniform("latClosedness", "float", 0.3)
+    .AddUniform("lonClosedness", "float", 0.7)
+    .Vertex_Before_PositionUpdated(`
+      float rLat = 1. / latClosedness;
+      float lat = position.y;
+      float latEffective = lat * latClosedness;
+      float cLat = cos(latEffective);
+      float sLat = sin(latEffective);
+      vec2 meridian =
+        latClosedness < 1e-3
+        //     radial (xz)          axial (y)
+        ? vec2(0                  , lat                     )
+        : vec2((cLat - 1.0) * rLat, sLat * rLat);
+
+      float rLon = 1. / lonClosedness;
+      float lon = position.x;
+      float lonEffective = lon * lonClosedness;
+      float cLon = cos(lonEffective);
+      float sLon = sin(lonEffective);
+      float r_xz = rLon + meridian.x;
+      vec2 parallel =
+        lonClosedness < 1e-3
+        //     x                   z
+        ? vec2(meridian.x        , lon        )
+        : vec2(r_xz * cLon - rLon, r_xz * sLon);
+
+      positionUpdated = vec3(parallel.x + 1.0, meridian.y, parallel.y);
+    `)
+    .Vertex_Before_NormalUpdated(`
+      normalUpdated = (
+        cLat < 1e-3 || lonClosedness < 1e-3 ? vec3(cLat, sLat, 0) :
+        normalize(cross(
+          vec3(-sLat * cLon, cLat, -sLat * sLon),
+          vec3(r_xz * -sLon, 0, r_xz * cLon)
+        ))
+      ) * vec3(position.z);
+
+    `);
   }
 
-  getClassName() {
-    return "LLBendPluginMaterial";
+  set latClosedness(value: number) {
+    this.onBindObservable.add(() => {
+      this.getEffect().setFloat("latClosedness", value);
+    });
   }
 
-  prepareDefines(defines: B.MaterialDefines) {
-    defines.LL_BEND = true;
-    defines.NORMAL = true;
-  }
-
-  getUniforms() {
-    return {
-      ubo: [
-        { name: "lonClosedness", size: 1, type: "float" },
-        { name: "latClosedness", size: 1, type: "float" },
-      ],
-    };
-  }
-
-  lonClosedness = 0.7;
-  latClosedness = 0.3;
-
-  bindForSubMesh(uniformBuffer: B.UniformBuffer) {
-    uniformBuffer.updateFloat("lonClosedness", this.lonClosedness);
-    uniformBuffer.updateFloat("latClosedness", this.latClosedness);
-  }
-
-  getCustomCode(shaderType: string) {
-    return shaderType !== "vertex" ? null : {
-      CUSTOM_VERTEX_UPDATE_POSITION: `
-        float rLat = 1. / latClosedness;
-        float lat = position.y;
-        float latEffective = lat * latClosedness;
-        float cLat = cos(latEffective);
-        float sLat = sin(latEffective);
-        vec2 meridian =
-          latClosedness < 1e-3
-          //     radial (xz)          axial (y)
-          ? vec2(0                  , lat                     )
-          : vec2((cLat - 1.0) * rLat, sLat * rLat);
-
-        float rLon = 1. / lonClosedness;
-        float lon = position.x;
-        float lonEffective = lon * lonClosedness;
-        float cLon = cos(lonEffective);
-        float sLon = sin(lonEffective);
-        float r_xz = rLon + meridian.x;
-        vec2 parallel =
-          lonClosedness < 1e-3
-          //     x                   z
-          ? vec2(meridian.x        , lon        )
-          : vec2(r_xz * cLon - rLon, r_xz * sLon);
-
-        positionUpdated = vec3(parallel.x + 1.0, meridian.y, parallel.y);
-      `,
-      CUSTOM_VERTEX_UPDATE_NORMAL: `
-        normalUpdated = (
-          cLat < 1e-3 || lonClosedness < 1e-3 ? vec3(cLat, sLat, 0) :
-          normalize(cross(
-            vec3(-sLat * cLon, cLat, -sLat * sLon),
-            vec3(r_xz * -sLon, 0, r_xz * cLon)
-          ))
-        ) * vec3(position.z);
-      `,
-    }
+  set lonClosedness(value: number) {
+    this.onBindObservable.add(() => {
+      this.getEffect().setFloat("lonClosedness", value);
+    });
   }
 }
+
+const llMat = Object.assign(new LatLonMaterial("latLon mat", scene), {
+  specularColor: new B.Color3(.5, .5, .5),
+  diffuseTexture: baseTexture,
+});
+
+const llBackMat = Object.assign(new LatLonMaterial("latLon back mat", scene), {
+  diffuseColor : new B.Color3(.5, .5, .5),
+  specularColor: new B.Color3(.5, .5, .5),
+});
 
 const flipOffset = [0, 1, -1];
 const flipTriangles = (input: B.IndicesArray) =>
@@ -244,14 +192,18 @@ function createGrid(uSteps: number, vSteps: number) {
     }
   }
 
-  return Object.assign(new B.VertexData(), {indices, positions, uvs});
+  return Object.assign(new B.VertexData(), {
+    indices,
+    positions,
+    // The normals are not used by our material; the property here just causes
+    // Babylon to include normals support in the shaders, which is used by our
+    // shader code (variable "normalUpdated").
+    normals: positions,
+    uvs});
 }
-
 
 let llSphere: B.Mesh;
 let llSphereBack: B.Mesh;
-const bendMaterial = new LLBendPluginMaterial(llMat);
-const bendBackMaterial = new LLBendPluginMaterial(llBackMat);
 {
   const grid = createGrid(36, 18);
   llSphere = new B.Mesh("llSphere");
@@ -261,6 +213,7 @@ const bendBackMaterial = new LLBendPluginMaterial(llBackMat);
   const gridBack = Object.assign(new B.VertexData(), {
     indices: flipTriangles(grid.indices),
     positions: grid.positions.map((val, i) => i % 3 == 2 ? -1 : val),
+    normals: grid.positions, // See the comment on normals above.
     uvs: grid.uvs,
   })
   llSphereBack = new B.Mesh("llSphereBack");
@@ -271,9 +224,32 @@ const bendBackMaterial = new LLBendPluginMaterial(llBackMat);
 // -----------------------------------------------------------------------------
 // Icosphere
 
+class SphereMaterial extends BM.CustomMaterial {
+  constructor(name: string, scene: B.Scene) {
+    super(name, scene);
+
+    this.AddUniform("bulge", "float", 0.9)
+    .Vertex_Before_PositionUpdated(`
+      vec3 normalizedPos = normalize(position);
+      positionUpdated = mix(position, normalizedPos, bulge);
+    `)
+    .Vertex_Before_NormalUpdated(`
+      normalUpdated = mix(normal, normalizedPos, bulge);
+    `);
+  }
+
+  set bulge(value: number) {
+    // No idea why we have to do this incantation of  "onBindObservable".
+    // But I found this in a playground example and it seems to work.
+    this.onBindObservable.add(() => {
+      this.getEffect().setFloat("bulge", value);
+    });
+  }
+}
+
 const icoSphMat = Object.assign(new SphereMaterial("icosphere mat", scene), {
   specularColor: new B.Color3(.5, .5, .5),
-  diffuseTexture: createIcoSprite(nm("myIcoSprite"), 3600, baseTexture, scene),
+  diffuseTexture: icoSprite,
 });
 
 const icoSphMesh = new B.Mesh(nm("icosphere"), scene);
@@ -285,13 +261,18 @@ createIcoVertices(8).applyToMesh(icoSphMesh, true);
 // -----------------------------------------------------------------------------
 // Icosahedron
 
-// TODO use a tree of single-face meshes instead of one multi-face mesh?
 
 const icoMesh = new B.Mesh(nm("icosahedron"), scene);
-icoMesh.material = icoMat;
+icoMesh.material = createStandardMaterial("icosphere mat", {
+  specularColor: new B.Color3(.5, .5, .5),
+  diffuseTexture: icoSprite,
+}, scene);
 
 const icoBackMesh = new B.Mesh(nm("icosahedron back"), scene);
-icoBackMesh.material = backMat;
+icoBackMesh.material = createStandardMaterial("back mat", {
+  diffuseColor : new B.Color3(.5, .5, .5),
+  specularColor: new B.Color3(.5, .5, .5),
+}, scene);
 
 /*
 Net:
@@ -598,8 +579,8 @@ function setVisibility(name: "lat/lon" | "icoSphere" | "icosahedron") {
 const configs: ConfigElem[] = [
   new ConfigDiamond(point(29, 20), 15, (latClosedness, lonClosedness) => {
     setVisibility("lat/lon");
-    Object.assign(bendMaterial, {latClosedness, lonClosedness});
-    Object.assign(bendBackMaterial, {latClosedness, lonClosedness});
+    Object.assign(llMat, {latClosedness, lonClosedness});
+    Object.assign(llBackMat, {latClosedness, lonClosedness});
   }),
   new ConfigVLine(29, 36, 55, flat => {
     setVisibility("icoSphere");
