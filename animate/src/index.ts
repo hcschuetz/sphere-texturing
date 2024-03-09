@@ -667,8 +667,8 @@ function selectRawPoint(ev: MouseEvent) {
   }
 }
 
-selectorElement.addEventListener("mousemove", selectRawPoint);
-selectorElement.addEventListener("mousedown", selectRawPoint);
+selectorElement.addEventListener("pointerdown", selectRawPoint);
+selectorElement.addEventListener("pointermove", selectRawPoint);
 
 selectPoint(point(29, 35));
 
