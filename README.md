@@ -1,7 +1,7 @@
 Sub-Projects
 ------------
 
-This repository consists of these sub-projects:
+This repository consists of several sub-projects:
 - A presentation on octasphere triangulations
   ([source](./presentation/), [slides](https://hcschuetz.github.io/octasphere/presentation/dist/))
 - The "lab" project for experimenting with the triangulations
@@ -14,9 +14,10 @@ This repository consists of these sub-projects:
   [web app](https://hcschuetz.github.io/octasphere/map-transformations/dist/))
 
 (While this repository started out with investigations of the octasphere,
-it meanwhile also contains quite some icosphere-related code.)
+it meanwhile also contains quite some code related to icospheres and
+latitude/longitude spheres.)
 
-Now for an explanation what this is all about:
+Now for an explanation what this octasphere stuff is all about:
 
 
 Triangulations of the Octasphere
