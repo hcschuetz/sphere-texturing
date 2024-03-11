@@ -1,6 +1,7 @@
 import * as B from "@babylonjs/core";
 import * as BM from "@babylonjs/materials";
-import { createIcoSprite, createIcoVertices, dv } from "./MyIcoSphere";
+import { createIcoSprite, createIcoVertices } from "./MyIcoSphere";
+import * as FI from "./FoldableIcosahedron";
 
 let nameCount = 0;
 const nm = (base: string) => base + "#" + nameCount++;
@@ -274,215 +275,26 @@ icoBackMesh.material = createStandardMaterial("back mat", {
   specularColor: new B.Color3(.5, .5, .5),
 }, scene);
 
-/*
-Net:
+const fi = new FI.FoldableIcosahedron();
+const fiPosArray = fi.positions;
 
-    a       b       c       d       e
-   / \     / \     / \     / \     / \
-  /   \   /   \   /   \   /   \   /   \
- /  0  \ /  1  \ /  2  \ /  3  \ /  4  \
-f-------g-------h-------i-------j-------k
-|\  5  / \  6  / \  7  / \  8  / \  9  /|
-| \   /   \   /   \   /   \   /   \   / |
-|14\ / 10  \ / 11  \ / 12  \ / 13  \ /14|
-l---m-------n-------o-------p-------q---r
-|19/ \ 15  / \ 16  / \ 17  / \ 18  / \19|
-| /   \   /   \   /   \   /   \   /   \ |
-|/     \ /     \ /     \ /     \ /     \|
-s       t       u       v       w       x
+Object.assign(new B.VertexData(), {
+  indices: FI.indices,
+  positions: fiPosArray,
+  uvs: FI.uvs,
+}).applyToMesh(icoMesh, true);
 
-UV mapping:
+Object.assign(new B.VertexData(), {
+  indices: flipTriangles(FI.indices),
+  positions: fiPosArray,
+  uvs: FI.uvs,
+}).applyToMesh(icoBackMesh, true);
 
-1           -- L---M-------N-------O-------P-------Q---R
-1   - dv    -- |19/a\ 15  /b\ 16  /c\ 17  /d\ 18  /e\19|
-               | // \\   // \\   // \\   // \\   // \\ |
-               |//   \\ //   \\ //   \\ //   \\ //   \\|
-1/2 + dv/2  -- S/  0  \T/  1  \U/  2  \V/  3  \W/  4  \X
-1/2 - dv/2  -- f-------g-------h-------i-------j-------k
-               |\  5  / \  6  / \  7  / \  8  / \  9  /|
-               | \   /   \   /   \   /   \   /   \   / |
-               |14\ / 10  \ / 11  \ / 12  \ / 13  \ /14|
-0           -- l---m-------n-------o-------p-------q---r
-
-^         u    |   |   |   |   |   |   |   |   |   |   |
-|v       ---> 0.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8 0.9 1.0
-*/
-
-/**
- * Which vertices exist?
- * 
- * Some vertices are duplicated (with lower/uppercase names)
- * so that we can assign different uv coordinates to the copies.
- */
-const namedIcoIndices: Record<string, number> = Object.fromEntries(
-  `
-    a   b   c   d   e
-  f   g   h   i   j   k
-  l m   n   o   p   q r
-  L M   N   O   P   Q R
-  S   T   U   V   W   X
-  `
-  .trim().split(/\s+/).map((c, i) => [c, i])
-);
-
-const icoIndices = new Uint16Array((20 + 2) * 3);
-
-`
-   fga ghb hic ijd jke
-   fmg gnh hoi ipj jqk
- lmf mng noh opi pqj qrk
- LSM MTN NUO OVP PWQ QXR
-`
-.trim().split(/\s+/).forEach(([c0, c1, c2], f) => {
-  icoIndices[3 * f + 0] = namedIcoIndices[c0];
-  icoIndices[3 * f + 1] = namedIcoIndices[c1];
-  icoIndices[3 * f + 2] = namedIcoIndices[c2];
-});
-
-/** uv coordinates for vertices */
-const icoUVs = Float32Array.of(
-  ...[   0.1,  0.3,  0.5,  0.7,  0.9   ].flatMap(u => [u,  1-dv   ]), // a-e
-  ...[0.0,  0.2,  0.4,  0.6,  0.8,  1.0].flatMap(u => [u, (1-dv)/2]), // f-k
-  ...[0, 0.1,  0.3,  0.5,  0.7,  0.9, 1].flatMap(u => [u,  0      ]), // l-r
-  ...[0, 0.1,  0.3,  0.5,  0.7,  0.9, 1].flatMap(u => [u,  1      ]), // L-R
-  ...[0.0,  0.2,  0.4,  0.6,  0.8,  1.0].flatMap(u => [u, (1+dv)/2]), // S-X
-);
-
-const icoPos = new Float32Array(31*3);
-
-/**
- * vertex positions
- * 
- * Not aligned with `icoPos`!
- * 
- * `lAux` and `rAux` are not part of the net/mesh, but are used to compute
- * `l` and `r`.
- */
-const icoPosAux: Record<string, V3> = Object.fromEntries(
-  "a b c d e f g h i j k lAux l m n o p q rAux r s t u v w x"
-  .split(/\s+/)
-  .map(name => [name, new V3()])
-);
-
-/** Map between `icoPos` and `icoPosAux` */
-const icoPosAuxMap = Object.keys(namedIcoIndices).map(name => name.toLowerCase());
-
-/**
- * Vertex computation order, starting from given vertices `h`, `o`, and `i`.
- *
- * `n h o i` means that `isoPosAux.n` (the position of vertex `n`) is computed
- * by rotating vertex `i` around the edge from vertex `h` to vertex `o`.
- */
-const vertexSteps =
-`
-  n h o i
-  g h n o
-  m g n h
-  f g m n
-  lAux f m g
-  p o i h
-  j p i o
-  q p j i
-  k q j p
-  rAux q k j
-  a g f m
-  b h g n
-  c i h o
-  d j i p
-  e k j q
-  s lAux m f
-  t m n g
-  u n o h
-  v o p i
-  w p q j
-  x q rAux k
-`
-.trim()
-.split(/\r?\n/)
-.map(line => line.trim().split(/\s+/).map(name => icoPosAux[name]));
-
-
-/** How far above/below the equator are the non-pole vertices? */
-const height = Math.sqrt(1 / 5);
-/** How far away from the main axis are the non-pole vertices? */
-const radius = 2 * height;
-const dihedralAngle = Math.acos(-Math.sqrt(5)/3); // ~ 138.2°
-/**
- * What fraction of a right angle must be subtracted from a straight angle
- * to get the dihedral angle? 
- */
-const anglePart = 2 - dihedralAngle / (TAU / 4);
-
-const mid_hi = new V3();
-const oHeight = new V3();
-const oHeightFlat = new V3();
-const slerp_o = new V3();
-
-const mid_ab = new V3();
-const height_c = new V3();
-const a_minus_c = new V3();
-const b_minus_c = new V3();
-const normal_abc = new V3();
-const rotated = new V3();
-
-function adaptIcoPos(bend: number, shiftSouth: number) {
-  const ix = radius * Math.cos(TAU/10);
-  const iz = radius * Math.sin(TAU/10);
-  icoPosAux.h.set(ix,  height, -iz);
-  icoPosAux.i.set(ix,  height,  iz);
-
-  mid_hi.set(ix, height, 0);
-  oHeight.set(radius, -height, 0).subtractInPlace(mid_hi);
-  oHeightFlat.set(0, -oHeight.length(), 0);
-  mid_hi.addToRef(V3.SlerpToRef(oHeightFlat, oHeight, bend, slerp_o), icoPosAux.o);
-
-  const bendAnglePart = bend * anglePart;
-  for (const [out, a, b, c] of vertexSteps) {
-    V3.CenterToRef(a, b, mid_ab);
-    mid_ab.subtractToRef(c, height_c);
-    V3.CrossToRef(
-      a.subtractToRef(c, a_minus_c),
-      b.subtractToRef(c, b_minus_c),
-      normal_abc
-    ).normalize().scaleInPlace(height_c.length());
-    mid_ab.addToRef(
-      V3.SlerpToRef(height_c, normal_abc, bendAnglePart, rotated),
-      out,
-    );
-  }
-  V3.CenterToRef(icoPosAux.m, icoPosAux.lAux, icoPosAux.l);
-  V3.CenterToRef(icoPosAux.q, icoPosAux.rAux, icoPosAux.r);
-
-  const shiftX = shiftSouth * (1 - shiftSouth);
-  const shiftY = (icoPosAux.c.y - icoPosAux.o.y + .02) * shiftSouth;
-
-  // Now copy the computed positions from icoPosAux to icoPos
-  // (and apply the shift for the southern triangles).
-  icoPosAuxMap.forEach((name, i) => {
-    const {x, y, z} = icoPosAux[name];
-    icoPos[3 * i + 0] = x + (i > 17 ? shiftX : 0);
-    icoPos[3 * i + 1] = y + (i > 17 ? shiftY : 0);
-    icoPos[3 * i + 2] = z;
-  });
-
-  icoMesh.updateVerticesData(B.VertexBuffer.PositionKind, icoPos);
-  icoBackMesh.updateVerticesData(B.VertexBuffer.PositionKind, icoPos);
+function adaptIcoPos(bend: number, shiftSouthern: number) {
+  fi.computePositions(bend, shiftSouthern);
+  icoMesh.updateVerticesData(B.VertexBuffer.PositionKind, fiPosArray);
+  icoBackMesh.updateVerticesData(B.VertexBuffer.PositionKind, fiPosArray);
 }
-
-const icoVertexData = Object.assign(new B.VertexData(), {
-  indices: icoIndices,
-  positions: icoPos,
-  uvs: icoUVs,
-});
-
-const icoBackVertexData = Object.assign(new B.VertexData(), {
-  indices: flipTriangles(icoIndices),
-  positions: icoPos,
-  uvs: icoUVs,
-});
-
-icoVertexData.applyToMesh(icoMesh, true);
-icoBackVertexData.applyToMesh(icoBackMesh, true);
 
 // -----------------------------------------------------------------------------
 
@@ -590,9 +402,9 @@ const configs: ConfigElem[] = [
     setVisibility("icosahedron");
     adaptIcoPos(1 - open, 0);
   }),
-  new ConfigVLine(29, 76, 95, icoShiftSouth => {
+  new ConfigVLine(29, 76, 95, shiftSouthern => {
     setVisibility("icosahedron");
-    adaptIcoPos(0, icoShiftSouth);
+    adaptIcoPos(0, shiftSouthern);
   }),
 ];
 
@@ -601,6 +413,7 @@ const selectorElement = document.querySelector<SVGSVGElement>("#selector")!;
 configs.forEach(config => selectorElement.append(config.createSVG()));
 
 function label(labelText: string, {x, y}: Point) {
+  // Or use <foreignObject> and let HTML do the line breaking?
   const text = svgEl("text");
   labelText.split(/\r?\n/).forEach((line, i, array) => {
     const tspan = svgEl("tspan", {x, y: y + 3*(i + 1 - array.length/2) - 0.5});
@@ -629,13 +442,6 @@ const handleElement = svgEl("circle", {
 })
 selectorElement.append(handleElement);
 
-const debugElem = svgEl("text", {x: 0, y: 87});
-selectorElement.append(debugElem);
-function debug(text: string) {
-  // debugElem.textContent = text;
-}
-
-
 function selectPoint(p: Point) {
   const {distSq, config, coords} =
     configs.map(config => {
@@ -652,8 +458,6 @@ function selectPoint(p: Point) {
 
   handleElement.setAttribute("cx", coords.x.toString());
   handleElement.setAttribute("cy", coords.y.toString());
-
-  debug(`(${coords.x.toFixed(2)},${coords.y.toFixed(2)})`);
 
   config.processValue(coords);
 }
