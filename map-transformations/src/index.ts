@@ -1,7 +1,10 @@
 import * as B from "@babylonjs/core";
 import * as BM from "@babylonjs/materials";
 import { createIcoSprite, createIcoVertices } from "./MyIcoSphere";
+import { createOctaSprite } from "./OctaSprite";
 import * as FI from "./FoldableIcosahedron";
+import * as FO from "./FoldableOctahedron";
+import { createOctaSphereVertexData } from "./OctaSphere";
 
 let nameCount = 0;
 const nm = (base: string) => base + "#" + nameCount++;
@@ -89,6 +92,7 @@ const baseTexture = Object.assign(new B.Texture(url, scene, true), {
 });
 
 const icoSprite = createIcoSprite(nm("myIcoSprite"), 3600, baseTexture, scene);
+const octaSprite = createOctaSprite(nm("octaSprite"), 3600, baseTexture, scene);
 
 // -----------------------------------------------------------------------------
 // Lat/Lon Sphere
@@ -223,7 +227,7 @@ let llSphereBack: B.Mesh;
 }
 
 // -----------------------------------------------------------------------------
-// Icosphere
+// Inflate polyhedron to sphere
 
 class SphereMaterial extends BM.CustomMaterial {
   constructor(name: string, scene: B.Scene) {
@@ -248,6 +252,23 @@ class SphereMaterial extends BM.CustomMaterial {
   }
 }
 
+// -----------------------------------------------------------------------------
+// Octasphere
+
+const octaSphMat = Object.assign(new SphereMaterial("octasphere mat", scene), {
+  specularColor: new B.Color3(.5, .5, .5),
+  diffuseTexture: octaSprite,
+});
+
+const octaSphMesh = new B.Mesh(nm("octasphere"), scene);
+octaSphMesh.material = octaSphMat;
+octaSphMesh.rotate(B.Axis.Y, TAU/2);
+
+createOctaSphereVertexData(8).applyToMesh(octaSphMesh, true);
+
+// -----------------------------------------------------------------------------
+// Icosphere
+
 const icoSphMat = Object.assign(new SphereMaterial("icosphere mat", scene), {
   specularColor: new B.Color3(.5, .5, .5),
   diffuseTexture: icoSprite,
@@ -260,8 +281,43 @@ icoSphMesh.rotate(B.Axis.Y, TAU/2);
 createIcoVertices(8).applyToMesh(icoSphMesh, true);
 
 // -----------------------------------------------------------------------------
-// Icosahedron
+// Octahedron
 
+const octaMesh = new B.Mesh(nm("icosahedron"), scene);
+octaMesh.material = createStandardMaterial("octasphere mat", {
+  specularColor: new B.Color3(.5, .5, .5),
+  diffuseTexture: octaSprite,
+}, scene);
+
+const octaBackMesh = new B.Mesh(nm("octahedron back"), scene);
+octaBackMesh.material = createStandardMaterial("back mat", {
+  diffuseColor : new B.Color3(.5, .5, .5),
+  specularColor: new B.Color3(.5, .5, .5),
+}, scene);
+
+const fo = new FO.FoldableOctahedron();
+const foPosArray = fo.positions;
+
+Object.assign(new B.VertexData(), {
+  indices: FO.indices,
+  positions: foPosArray,
+  uvs: FO.uvs,
+}).applyToMesh(octaMesh, true);
+
+Object.assign(new B.VertexData(), {
+  indices: flipTriangles(FO.indices),
+  positions: foPosArray,
+  uvs: FO.uvs,
+}).applyToMesh(octaBackMesh, true);
+
+function adaptOctaPos(bend: number, shiftSouthern: number) {
+  fo.computePositions(bend, shiftSouthern);
+  octaMesh.updateVerticesData(B.VertexBuffer.PositionKind, foPosArray);
+  octaBackMesh.updateVerticesData(B.VertexBuffer.PositionKind, foPosArray);
+}
+
+// -----------------------------------------------------------------------------
+// Icosahedron
 
 const icoMesh = new B.Mesh(nm("icosahedron"), scene);
 icoMesh.material = createStandardMaterial("icosphere mat", {
@@ -318,6 +374,30 @@ interface ConfigElem {
 
   /** Apply the given point.  (It will be in this element.) */
   processValue(p: Point): void;
+}
+
+class ConfigHLine implements ConfigElem {
+  constructor(
+    private xStart: number,
+    private xEnd: number,
+    private y: number,
+    private process: (val: number) => void,
+  ) {}
+
+  createSVG(): SVGElement {
+    return svgEl("line", {
+      x1: this.xStart, y1: this.y,
+      x2: this.xEnd  , y2: this.y,
+    })
+  }
+
+  getClosest(p: Point): Point {
+    return point([this.xStart, p.x, this.xEnd].sort((a, b) => a - b)[1], this.y);
+  }
+
+  processValue(p: Point) {
+    this.process((p.y - this.xStart) / (this.xEnd - this.xStart));
+  }
 }
 
 class ConfigVLine implements ConfigElem {
@@ -382,9 +462,11 @@ class ConfigDiamond implements ConfigElem {
   }
 }
 
-function setVisibility(name: "lat/lon" | "icoSphere" | "icosahedron") {
+function setVisibility(name: "lat/lon" | "octaSphere" | "octahedron" | "icoSphere" | "icosahedron") {
   llSphere.isVisible = llSphereBack.isVisible = name === "lat/lon";
+  octaSphMesh.isVisible = name === "octaSphere";
   icoSphMesh.isVisible = name === "icoSphere";
+  octaMesh.isVisible = octaBackMesh.isVisible = name === "octahedron";
   icoMesh.isVisible = icoBackMesh.isVisible = name === "icosahedron";
 }
 
@@ -394,15 +476,34 @@ const configs: ConfigElem[] = [
     Object.assign(llMat, {latClosedness, lonClosedness});
     Object.assign(llBackMat, {latClosedness, lonClosedness});
   }),
-  new ConfigVLine(29, 36, 55, flat => {
+  new ConfigHLine(22, 36, 35.5, () => {
+    setVisibility("lat/lon");
+    Object.assign(llMat, {latClosedness: 1, lonClosedness: 1});
+    Object.assign(llBackMat, {latClosedness: 1, lonClosedness: 1});
+  }),
+
+  new ConfigVLine(22, 36, 55, flat => {
+    setVisibility("octaSphere");
+    octaSphMat.bulge = 1 - flat;
+  }),
+  new ConfigVLine(22, 56, 75, open => {
+    setVisibility("octahedron");
+    adaptOctaPos(1 - open, 0);
+  }),
+  new ConfigVLine(22, 76, 95, shiftSouthern => {
+    setVisibility("octahedron");
+    adaptOctaPos(0, shiftSouthern);
+  }),
+
+  new ConfigVLine(36, 36, 55, flat => {
     setVisibility("icoSphere");
     icoSphMat.bulge = 1 - flat;
   }),
-  new ConfigVLine(29, 56, 75, open => {
+  new ConfigVLine(36, 56, 75, open => {
     setVisibility("icosahedron");
     adaptIcoPos(1 - open, 0);
   }),
-  new ConfigVLine(29, 76, 95, shiftSouthern => {
+  new ConfigVLine(36, 76, 95, shiftSouthern => {
     setVisibility("icosahedron");
     adaptIcoPos(0, shiftSouthern);
   }),
@@ -427,15 +528,20 @@ label("equirectangular map", point(32, 5));
 label("stretched\nparallels", point(0, 20));
 label("stretched\nmeridians", point(47, 20));
 
-function labeledDot(labelText: string, p: Point) {
-  selectorElement.append(svgEl("circle", {cx: p.x, cy: p.y, r: 0.7}));
-  label(labelText, point(p.x + 3, p.y));
+function dot(p: Point) {
+  selectorElement.append(svgEl("circle", {cx: p.x, cy: p.y, r: 0.7}))
 }
 
-labeledDot("sphere", point(29, 35.5));
-labeledDot("icosahedron", point(29, 55.5));
-labeledDot("icosahedron net", point(29, 75.5));
-labeledDot("icosprite", point(29, 95.5));
+dot(point(22, 35.5)); dot(point(36, 35.5));
+dot(point(22, 55.5)); dot(point(36, 55.5));
+dot(point(22, 75.5)); dot(point(36, 75.5));
+dot(point(22, 95.5)); dot(point(36, 95.5));
+
+label("sphere", point(38, 35.5));
+label("octahedron", point(5, 55.5));
+label("icosahedron", point(38, 55.5));
+label("flat", point(27, 75.5));
+label("sprite\nsheet", point(25.5, 95.5));
 
 const handleElement = svgEl("circle", {
   r: 1.5, fill: "#808080", stroke: "#fff", "stroke-width": 0.3
@@ -474,7 +580,7 @@ function selectRawPoint(ev: MouseEvent) {
 selectorElement.addEventListener("pointerdown", selectRawPoint);
 selectorElement.addEventListener("pointermove", selectRawPoint);
 
-selectPoint(point(29, 35));
+selectPoint(point(29, 36));
 
 // -----------------------------------------------------------------------------
 
