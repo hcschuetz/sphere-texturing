@@ -160,12 +160,7 @@ export const createIcoVertices = (nSteps: number) => {
 
   const normals = new Float32Array(positions.length);
   B.VertexData.ComputeNormals(positions, indices, normals);
-  return Object.assign(new B.VertexData(), {
-    indices,
-    positions,
-    normals,
-    uvs,
-  });
+  return Object.assign(new B.VertexData(), {indices, positions, normals, uvs});
 };
 
 // -----------------------------------------------------------------------------
