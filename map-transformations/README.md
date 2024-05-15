@@ -1,7 +1,7 @@
 Map Transformations
 ===================
 
-[This web application](https://hcschuetz.github.io/octasphere/map-transformations/dist/)
+[This web application](https://hcschuetz.github.io/sphere-texturing/map-transformations/dist/)
 shows different ways of projecting a sphere to a flat map.
 
 (See [here](https://en.wikipedia.org/wiki/File:Blue_Marble_Next_Generation_%2B_topography_%2B_bathymetry.jpg)
