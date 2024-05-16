@@ -32,7 +32,7 @@ the meridians have a constant distance on the map.
 This leads to some drawbacks:
 - Equirectangular maps are heavily distorted.
 - Texture memory is wasted.
-- Triangles around the poles are degenerated on the sphere
+- Half of the triangles around the poles are degenerated on the sphere
   and thus the corresponding parts of the texture/map are not rendered.
 
 To avoid these drawbacks
