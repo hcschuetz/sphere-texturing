@@ -18,7 +18,6 @@ It works but it's slow.
   equirectangular base texture.
   This would make more sense in this branch
   (it would not just be faster,
-  
   but also more accurate due to fewer interpolation steps),
   but in the main branch I wanted to show how polyhedron-based textures
   can be created and used.
