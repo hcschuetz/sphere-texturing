@@ -1,3 +1,30 @@
+<div style="border: 5px solid red; padding: 0 1ex;">
+
+On this Branch
+--------------
+
+This branch (`rotating-base-texture`) is an experiment exploring what
+sphere texturing would look like with different main meridians
+(or the "cutting" meridians corresponding to
+the left/right borders of the equirectangular map).
+
+It works but it's slow.
+- Smoothly re-creating textures while sliding the input knob might be too
+  inefficient.  (We even create the textures that are currently unused!)
+- I think I'm properly disposing of outdated textures, but there might still be
+  a leak.  (Things get slower after using the UI for a while.)
+- Instead of "materializing" multiple transformed map versions as textures
+  we could just use fragment shaders that look up colors in the (unrotated)
+  equirectangular base texture.
+  This would make more sense in this branch
+  (it would not just be faster,
+  
+  but also more accurate due to fewer interpolation steps),
+  but in the main branch I wanted to show how polyhedron-based textures
+  can be created and used.
+
+</div>
+
 Sub-Projects
 ------------
 

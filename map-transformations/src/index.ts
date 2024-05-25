@@ -1,10 +1,13 @@
 import * as B from "@babylonjs/core";
 import * as BM from "@babylonjs/materials";
+import * as M from "mobx";
 import { createIcoSprite, createIcoVertices } from "./MyIcoSphere";
 import { createOctaSprite } from "./OctaSprite";
 import * as FI from "./FoldableIcosahedron";
 import * as FO from "./FoldableOctahedron";
 import { createOctaSphereVertexData } from "./OctaSphere";
+
+M.configure({enforceActions: "never"});
 
 let nameCount = 0;
 const nm = (base: string) => base + "#" + nameCount++;
@@ -91,14 +94,30 @@ const baseTexture = Object.assign(new B.Texture(url, scene, true), {
   wrapV: B.Texture.CLAMP_ADDRESSMODE,
 });
 
-const icoSprite = createIcoSprite(nm("myIcoSprite"), 3600, baseTexture, scene);
-const octaSprite = createOctaSprite(nm("octaSprite"), 3600, baseTexture, scene);
+const baseReady = M.observable.box<B.Texture | null>(null);
+baseTexture.onLoadObservable.addOnce(() => baseReady.set(baseTexture));
+
+const offset = M.observable.box(0);
+
+function disposing(box: M.IComputedValue<B.Texture | null>, tx: B.Texture): B.Texture {
+  M.when(() => box.get() !== tx, () => tx.dispose());
+  return tx;
+};
+
+const icoSprite = M.computed((): B.Texture | null => {
+  const base = baseReady.get();
+  return base && disposing(icoSprite, createIcoSprite(nm("myIcoSprite"), 3600, base, offset.get(), scene));
+});
+const octaSprite = M.computed((): B.Texture | null => {
+  const base = baseReady.get();
+  return base && disposing(octaSprite, createOctaSprite(nm("octaSprite"), 3600, base, offset.get(), scene));
+});
 
 // -----------------------------------------------------------------------------
 // Lat/Lon Sphere
 
 class LatLonMaterial extends BM.CustomMaterial {
-  constructor(name: string, scene: B.Scene) {
+  constructor(name: string, withRot: boolean, scene: B.Scene) {
     super(name, scene);
 
     this
@@ -138,8 +157,14 @@ class LatLonMaterial extends BM.CustomMaterial {
           vec3(r_xz * -sLon, 0, r_xz * cLon)
         ))
       ) * vec3(position.z);
-
     `);
+    if (withRot) {
+      this
+      .AddUniform("rot", "float", 0)
+      .Vertex_After_WorldPosComputed(`
+        uvUpdated.x -= rot;
+      `);
+    }
   }
 
   set latClosedness(value: number) {
@@ -153,14 +178,21 @@ class LatLonMaterial extends BM.CustomMaterial {
       this.getEffect().setFloat("lonClosedness", value);
     });
   }
+
+  set rot(value: number) {
+    this.onBindObservable.add(() => {
+      this.getEffect().setFloat("rot", value);
+    });
+  }
 }
 
-const llMat = Object.assign(new LatLonMaterial("latLon mat", scene), {
+const llMat = Object.assign(new LatLonMaterial("latLon mat", true, scene), {
   specularColor: new B.Color3(.5, .5, .5),
   diffuseTexture: baseTexture,
 });
+M.autorun(() => llMat.rot = offset.get());
 
-const llBackMat = Object.assign(new LatLonMaterial("latLon back mat", scene), {
+const llBackMat = Object.assign(new LatLonMaterial("latLon back mat", false, scene), {
   diffuseColor : new B.Color3(.5, .5, .5),
   specularColor: new B.Color3(.5, .5, .5),
 });
@@ -257,8 +289,8 @@ class SphereMaterial extends BM.CustomMaterial {
 
 const octaSphMat = Object.assign(new SphereMaterial("octasphere mat", scene), {
   specularColor: new B.Color3(.5, .5, .5),
-  diffuseTexture: octaSprite,
 });
+M.autorun(() => octaSphMat.diffuseTexture = octaSprite.get());
 
 const octaSphMesh = new B.Mesh(nm("octasphere"), scene);
 octaSphMesh.material = octaSphMat;
@@ -271,8 +303,8 @@ createOctaSphereVertexData(8).applyToMesh(octaSphMesh, true);
 
 const icoSphMat = Object.assign(new SphereMaterial("icosphere mat", scene), {
   specularColor: new B.Color3(.5, .5, .5),
-  diffuseTexture: icoSprite,
 });
+M.autorun(() => icoSphMat.diffuseTexture = icoSprite.get());
 
 const icoSphMesh = new B.Mesh(nm("icosphere"), scene);
 icoSphMesh.material = icoSphMat;
@@ -283,11 +315,13 @@ createIcoVertices(8).applyToMesh(icoSphMesh, true);
 // -----------------------------------------------------------------------------
 // Octahedron
 
-const octaMesh = new B.Mesh(nm("icosahedron"), scene);
-octaMesh.material = createStandardMaterial("octasphere mat", {
+const octaMat = createStandardMaterial("octa mat", {
   specularColor: new B.Color3(.5, .5, .5),
-  diffuseTexture: octaSprite,
 }, scene);
+M.autorun(() => octaMat.diffuseTexture = octaSprite.get());
+
+const octaMesh = new B.Mesh(nm("octahedron"), scene);
+octaMesh.material = octaMat;
 
 const octaBackMesh = new B.Mesh(nm("octahedron back"), scene);
 octaBackMesh.material = createStandardMaterial("back mat", {
@@ -319,11 +353,13 @@ function adaptOctaPos(bend: number, shiftSouthern: number) {
 // -----------------------------------------------------------------------------
 // Icosahedron
 
-const icoMesh = new B.Mesh(nm("icosahedron"), scene);
-icoMesh.material = createStandardMaterial("icosphere mat", {
+const icoMat = createStandardMaterial("ico mat", {
   specularColor: new B.Color3(.5, .5, .5),
-  diffuseTexture: icoSprite,
 }, scene);
+M.autorun(() => icoMat.diffuseTexture = icoSprite.get());
+
+const icoMesh = new B.Mesh(nm("icosahedron"), scene);
+icoMesh.material = icoMat;
 
 const icoBackMesh = new B.Mesh(nm("icosahedron back"), scene);
 icoBackMesh.material = createStandardMaterial("back mat", {
@@ -581,6 +617,14 @@ selectorElement.addEventListener("pointerdown", selectRawPoint);
 selectorElement.addEventListener("pointermove", selectRawPoint);
 
 selectPoint(point(29, 36));
+
+// -----------------------------------------------------------------------------
+
+const rotInput = document.querySelector<HTMLInputElement>("#rotation-input")!;
+rotInput.addEventListener("input", () => {
+  offset.set(Number.parseFloat(rotInput.value)/360);
+});
+rotInput.value = "0";
 
 // -----------------------------------------------------------------------------
 

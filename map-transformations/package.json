@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@babylonjs/core": "^6.46.0",
-    "@babylonjs/materials": "^6.46.0"
+    "@babylonjs/materials": "^6.46.0",
+    "mobx": "^6.12.3"
   }
 }

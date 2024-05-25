@@ -208,6 +208,7 @@ B.Effect.ShadersStore.MyIcoSpriteFragmentShader = `
 varying vec2 vUV;
 
 uniform sampler2D base;
+uniform float offset;
 
 mat3 uv12pos[4] = mat3[4](${
   [uv12pos_14, uv12pos_5, uv12pos_0, uv12pos_19].map(mat => `
@@ -242,7 +243,7 @@ void main(void) {
   vec3 pos = uv12pos[2 * int(polar) + int(upper)] * vec3(u - uOffset, v, 1.);
 
   gl_FragColor = texture(base, vec2(
-    atan(pos.z, pos.x) * ${1/TAU} + uOffset,
+    atan(pos.z, pos.x) * ${1/TAU} + uOffset - offset,
     atan(pos.y, length(pos.xz)) * ${2/TAU} + .5
   ));
 }
@@ -253,14 +254,15 @@ void main(void) {
  * for icospheres.
  */
 export const createIcoSprite = (
-  name: string, width: number, base: B.Texture, scene: B.Scene
+  name: string, width: number, base: B.Texture, offset: number, scene: B.Scene
 ): B.Texture =>
   Object.assign(
     new B.ProceduralTexture(name, {
       width,
       height: Math.round(width * Math.sqrt(3) / (5 * (1 - dv))),
     }, "MyIcoSprite", scene)
-    .setTexture("base", base),
+    .setTexture("base", base)
+    .setFloat("offset", offset),
     {
       wrapU: B.Texture.WRAP_ADDRESSMODE,
       wrapV: B.Texture.WRAP_ADDRESSMODE,

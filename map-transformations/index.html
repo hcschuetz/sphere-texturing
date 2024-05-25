@@ -40,6 +40,14 @@
         stroke-width: 0;
         font: 3px sans-serif;
       }
+      #rotation-input {
+        z-index: 3;
+        position: fixed;
+        right: 0;
+        bottom: 0;
+        width: 70vw;
+        margin: 10px;
+      }
     </style>
     </head>
   <body>
@@ -53,6 +61,8 @@
       fill="#24f"
     >
     </svg>
+
+    <input id="rotation-input" type="range" min="-180" max="180" value="0">
 
     <canvas id="renderCanvas"></canvas>
   </body>

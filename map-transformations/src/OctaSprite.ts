@@ -105,6 +105,7 @@ B.Effect.ShadersStore.OctaSpriteFragmentShader = `
 varying vec2 vUV;
 
 uniform sampler2D base;
+uniform float offset;
 
 mat3x2 uv12we = mat3x2(${uv12we});
 
@@ -132,7 +133,7 @@ void main(void) {
 
   // TODO take level of detail into account
   gl_FragColor = texture(base, vec2(
-    lon * ${1/TAU},
+    lon * ${1/TAU} - offset,
     lat * ${2/TAU} + .5
   ));
 }
@@ -144,11 +145,12 @@ void main(void) {
  * for Babylon's octasphere.
  */
 export const createOctaSprite = (
-  name: string, width: number, base: B.Texture, scene: B.Scene
+  name: string, width: number, base: B.Texture, offset: number, scene: B.Scene
 ): B.Texture =>
   Object.assign(
     new B.ProceduralTexture(name, {width, height: getHeight(width)}, "OctaSprite", scene)
-    .setTexture("base", base),
+    .setTexture("base", base)
+    .setFloat("offset", offset),
     {
       wrapU: B.Texture.WRAP_ADDRESSMODE,
       wrapV: B.Texture.CLAMP_ADDRESSMODE,
