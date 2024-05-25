@@ -156,7 +156,7 @@ const showTextureElem = document.querySelector("#showTexture") as HTMLInputEleme
 showTextureElem.checked = showTexture.get();
 showTextureElem.addEventListener("change", () => {
   showTexture.set(showTextureElem.checked);
-})
+});
 
 // -----------------------------------------------------------------------------
 // Textures/Sprites
