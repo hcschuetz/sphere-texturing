@@ -143,6 +143,10 @@ export class FoldableOctahedron {
   readonly positions = new Float32Array(vertexNames.length * 3);
 
   computePositions(bend: number, shift: number) {
+    // TODO use higher-level operations (such as rotations by quaternions)
+    // instead of low-level trigonometric functions and coordinates.
+    // See ./FoldableIcosahedron.ts .
+
     const {
       ex, a, b, c, d, ex_a, ex_a_b, ex_a2_c, ex_a_b2, ex_a_b2_d,
       positions

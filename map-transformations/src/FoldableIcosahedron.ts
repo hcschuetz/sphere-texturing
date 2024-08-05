@@ -128,12 +128,7 @@ const vertexIndexMap = vertexNames.map(name => v3Indices[name.toLowerCase() + "_
 const height = Math.sqrt(1 / 5);
 /** How far away from the main axis are the non-pole vertices? */
 const radius = 2 * height;
-const dihedralAngle = Math.acos(-Math.sqrt(5)/3); // ~ 138.2°
-/**
- * What fraction of a right angle must be subtracted from a straight angle
- * to get the dihedral angle? 
- */
-const anglePart = 2 - dihedralAngle / (TAU / 4);
+const externalDihedralAngle = Math.acos(Math.sqrt(5)/3); // ~ 180° - 138.2°
 
 const ix = radius * Math.cos(TAU/10);
 const iz = radius * Math.sin(TAU/10);
@@ -150,11 +145,8 @@ export class FoldableIcosahedron {
   private readonly oHeightFlat = new V3();
   private readonly slerp_o = new V3();
   private readonly mid_ab = new V3();
-  private readonly height_c = new V3();
-  private readonly a_minus_c = new V3();
-  private readonly b_minus_c = new V3();
-  private readonly normal_abc = new V3();
-  private readonly rotated = new V3();
+  private readonly axis = new V3();
+  private readonly quaternion = new B.Quaternion();
 
   // The result of `computePositions()`
   readonly positions = new Float32Array(vertexNames.length * 3);
@@ -176,25 +168,18 @@ export class FoldableIcosahedron {
     const {
       mid_hi, oHeight, oHeightFlat, slerp_o,
       v3s, steps,
-      mid_ab, height_c, a_minus_c, b_minus_c, normal_abc, rotated,
+      mid_ab, axis, quaternion,
       positions,
     } = this;
 
     mid_hi.addToRef(V3.SlerpToRef(oHeightFlat, oHeight, bend, slerp_o), v3s[o_]);
 
-    const bendAnglePart = bend * anglePart;
+    const bendAngle = TAU/2 - bend * externalDihedralAngle;
     for (const [out, a, b, c] of steps) {
       V3.CenterToRef(a, b, mid_ab);
-      mid_ab.subtractToRef(c, height_c);
-      V3.CrossToRef(
-        a.subtractToRef(c, a_minus_c),
-        b.subtractToRef(c, b_minus_c),
-        normal_abc
-      ).normalize().scaleInPlace(height_c.length());
-      mid_ab.addToRef(
-        V3.SlerpToRef(height_c, normal_abc, bendAnglePart, rotated),
-        out,
-      );
+      b.subtractToRef(a, axis);
+      B.Quaternion.RotationAxisToRef(axis, bendAngle, quaternion);
+      c.rotateByQuaternionAroundPointToRef(quaternion, mid_ab, out);
     }
     V3.CenterToRef(v3s[m_], v3s[y_], v3s[l_]);
     V3.CenterToRef(v3s[q_], v3s[z_], v3s[r_]);
