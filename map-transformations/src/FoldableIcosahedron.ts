@@ -144,7 +144,6 @@ export class FoldableIcosahedron {
   private readonly oHeight = new V3();
   private readonly oHeightFlat = new V3();
   private readonly slerp_o = new V3();
-  private readonly mid_ab = new V3();
   private readonly axis = new V3();
   private readonly quaternion = new B.Quaternion();
 
@@ -168,7 +167,7 @@ export class FoldableIcosahedron {
     const {
       mid_hi, oHeight, oHeightFlat, slerp_o,
       v3s, steps,
-      mid_ab, axis, quaternion,
+      axis, quaternion,
       positions,
     } = this;
 
@@ -176,10 +175,9 @@ export class FoldableIcosahedron {
 
     const bendAngle = TAU/2 - bend * externalDihedralAngle;
     for (const [out, a, b, c] of steps) {
-      V3.CenterToRef(a, b, mid_ab);
       b.subtractToRef(a, axis);
       B.Quaternion.RotationAxisToRef(axis, bendAngle, quaternion);
-      c.rotateByQuaternionAroundPointToRef(quaternion, mid_ab, out);
+      c.rotateByQuaternionAroundPointToRef(quaternion, a, out);
     }
     V3.CenterToRef(v3s[m_], v3s[y_], v3s[l_]);
     V3.CenterToRef(v3s[q_], v3s[z_], v3s[r_]);
