@@ -10,6 +10,8 @@ const TAU = 2 * Math.PI;
 type V3 = B.Vector3;
 const V3 = B.Vector3;
 
+const Q = B.Quaternion;
+
 // -----------------------------------------------------------------------------
 /*
 We start with this flattened octahedron:
@@ -123,11 +125,15 @@ export const uvs = vertexNames.flatMap(name => uvsByName[name])
 
 const r2 = Math.SQRT2;
 const r1_5 = Math.sqrt(1.5)
-const halfDihedral = TAU/4 - Math.acos(-1/3) / 2;
+const slant = Math.atan(Math.SQRT1_2);
 const du_display = 0.02;
 
 export class FoldableOctahedron {
-  private readonly ex = new V3();
+  private readonly qa = new Q();
+  private readonly qb = new Q();
+  private readonly qc = new Q();
+  private readonly qd = new Q();
+
   private readonly a = new V3();
   private readonly b = new V3();
   private readonly c = new V3();
@@ -143,36 +149,33 @@ export class FoldableOctahedron {
   readonly positions = new Float32Array(vertexNames.length * 3);
 
   computePositions(bend: number, shift: number) {
-    // TODO use higher-level operations (such as rotations by quaternions)
-    // instead of low-level trigonometric functions and coordinates.
-    // See ./FoldableIcosahedron.ts .
-
     const {
-      ex, a, b, c, d, ex_a, ex_a_b, ex_a2_c, ex_a_b2, ex_a_b2_d,
+      qa, qb, qc, qd, a, b, c, d, ex_a, ex_a_b, ex_a2_c, ex_a_b2, ex_a_b2_d,
       positions
     } = this;
 
-    const bend45 = TAU/8 * bend;
-    const c45 = Math.cos(bend45);
-    const s45 = Math.sin(bend45);
+    const bend45 = - TAU/8 * bend;
+    const bend135 = 3 * bend45;
+    const bendHD = slant * bend;
 
-    const bendHD = halfDihedral * bend;
-    const cHD = Math.cos(bendHD);
-    const sHD = Math.sin(bendHD);
+    // TODO remove 4 invocations of .clone() as soon as we have a Babylon
+    // version with https://github.com/BabylonJS/Babylon.js/pull/15381 merged.
 
-    const bend135 = 3 * TAU/8 * bend;
-    const c135 = Math.cos(bend135);
-    const s135 = Math.sin(bend135);
+    Q.RotationAxisToRef(B.Axis.Y.clone(), bend45, qa);
+    B.Axis.Z.rotateByQuaternionToRef(qa, a).scaleInPlace(r2);
 
-    ex.set(1, 0, 0);
-    a.set(-s45, 0, c45).scaleInPlace(r2);
-    b.set(-s135, 0, c135).scaleInPlace(r2);
-    c.set(-sHD * c45, cHD, -sHD * s45).scaleInPlace(r1_5);
-    d.set(-sHD * c135, cHD, -sHD * s135).scaleInPlace(r1_5);
+    Q.RotationAxisToRef(B.Axis.Y.clone(), bend135, qb);
+    B.Axis.Z.rotateByQuaternionToRef(qb, b).scaleInPlace(r2);
 
-    ex.addToRef(a, ex_a);
+    Q.RotationAxisToRef(a.clone(), bendHD, qc);
+    B.Axis.Y.rotateByQuaternionToRef(qc, c).scaleInPlace(r1_5);
+
+    Q.RotationAxisToRef(b.clone(), bendHD, qd);
+    B.Axis.Y.rotateByQuaternionToRef(qd, d).scaleInPlace(r1_5);
+
+    B.Axis.X.addToRef(a, ex_a);
     ex_a.addToRef(b, ex_a_b);
-    a.scaleToRef(0.5, ex_a2_c).addInPlace(ex).addInPlace(c);
+    a.scaleToRef(0.5, ex_a2_c).addInPlace(B.Axis.X).addInPlace(c);
     b.scaleToRef(0.5, ex_a_b2).addInPlace(ex_a);
     ex_a_b2.addToRef(d, ex_a_b2_d);
 
@@ -203,7 +206,7 @@ export class FoldableOctahedron {
     set(e0, w3, e4b, w7, ex_a     );
     set(w1, e2, w5 , e6, ex_a     );
     set(n1, n2, s5 , s6, ex_a2_c  );
-    set(e1, w2, e5 , w6, ex       );
+    set(e1, w2, e5 , w6, B.Axis.X );
 
     positions[e4a * 3 + 0] =  ex_a_b2.x + adjX;
     positions[e4a * 3 + 1] = -ex_a_b2.y + adjY;
