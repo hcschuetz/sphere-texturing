@@ -7,11 +7,11 @@
     "build": "vite build --base ./ --emptyOutDir"
   },
   "devDependencies": {
-    "typescript": "^5.2.2",
-    "vite": "^5.1.4"
+    "typescript": "^5.5.4",
+    "vite": "^5.4.0"
   },
   "dependencies": {
-    "@babylonjs/core": "^6.46.0",
-    "@babylonjs/materials": "^6.46.0"
+    "@babylonjs/core": "^7.20.1",
+    "@babylonjs/materials": "^7.20.1"
   }
 }

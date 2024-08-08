@@ -158,19 +158,16 @@ export class FoldableOctahedron {
     const bend135 = 3 * bend45;
     const bendHD = slant * bend;
 
-    // TODO remove 4 invocations of .clone() as soon as we have a Babylon
-    // version with https://github.com/BabylonJS/Babylon.js/pull/15381 merged.
-
-    Q.RotationAxisToRef(B.Axis.Y.clone(), bend45, qa);
+    Q.RotationAxisToRef(B.Axis.Y, bend45, qa);
     B.Axis.Z.rotateByQuaternionToRef(qa, a).scaleInPlace(r2);
 
-    Q.RotationAxisToRef(B.Axis.Y.clone(), bend135, qb);
+    Q.RotationAxisToRef(B.Axis.Y, bend135, qb);
     B.Axis.Z.rotateByQuaternionToRef(qb, b).scaleInPlace(r2);
 
-    Q.RotationAxisToRef(a.clone(), bendHD, qc);
+    Q.RotationAxisToRef(a, bendHD, qc);
     B.Axis.Y.rotateByQuaternionToRef(qc, c).scaleInPlace(r1_5);
 
-    Q.RotationAxisToRef(b.clone(), bendHD, qd);
+    Q.RotationAxisToRef(b, bendHD, qd);
     B.Axis.Y.rotateByQuaternionToRef(qd, d).scaleInPlace(r1_5);
 
     B.Axis.X.addToRef(a, ex_a);
