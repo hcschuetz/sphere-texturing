@@ -175,9 +175,8 @@ export class FoldableOctahedron {
 
     B.Axis.X.addToRef(a, ex_a);
     ex_a.addToRef(b, ex_a_b);
-    a.scaleToRef(0.5, ex_a2_c).addInPlace(B.Axis.X).addInPlace(c);
-    b.scaleToRef(0.5, ex_a_b2).addInPlace(ex_a);
-    ex_a_b2.addToRef(d, ex_a_b2_d);
+    V3.CenterToRef(B.Axis.X, ex_a, ex_a2_c).addInPlace(c);
+    V3.CenterToRef(ex_a, ex_a_b, ex_a_b2).addToRef(d, ex_a_b2_d);
 
     const adjX = shift * (1 - shift);
     const adjY = shift * r1_5;
