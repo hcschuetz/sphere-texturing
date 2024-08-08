@@ -149,17 +149,17 @@ export class FoldableOctahedron {
       positions
     } = this;
 
-    rotateAndStretch(B.Axis.Z, B.Axis.Y, -TAU/8 * bend, r2, a);
+    rotateAndScale(B.Axis.Z, B.Axis.Y, -TAU/8 * bend, r2, a);
     B.Axis.X.addToRef(a, ex_a);
 
-    rotateAndStretch(B.Axis.Z, B.Axis.Y, -3 * TAU/8 * bend, r2, b);
+    rotateAndScale(B.Axis.Z, B.Axis.Y, -3 * TAU/8 * bend, r2, b);
     ex_a.addToRef(b, ex_a_b);
 
     const bendSlant = slant * bend;
-    rotateAndStretch(B.Axis.Y, a, bendSlant, r1_5, c);
+    rotateAndScale(B.Axis.Y, a, bendSlant, r1_5, c);
     V3.CenterToRef(B.Axis.X, ex_a, ex_a2_c).addInPlace(c);
 
-    rotateAndStretch(B.Axis.Y, b, bendSlant, r1_5, d);
+    rotateAndScale(B.Axis.Y, b, bendSlant, r1_5, d);
     V3.CenterToRef(ex_a, ex_a_b, ex_a_b2).addToRef(d, ex_a_b2_d);
 
     const adjX = shift * (1 - shift);
@@ -228,9 +228,7 @@ export class FoldableOctahedron {
 }
 
 const q_tmp = new Q();
-function rotateAndStretch(
-  from: V3, axis: V3, angle: number, scale: number, result: V3,
-) {
+function rotateAndScale(from: V3, axis: V3, angle: number, scale: number, result: V3) {
   Q.RotationAxisToRef(axis, angle, q_tmp);
   from.rotateByQuaternionToRef(q_tmp, result).scaleInPlace(scale);
 }
