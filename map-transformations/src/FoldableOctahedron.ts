@@ -129,11 +129,6 @@ const slant = Math.atan(Math.SQRT1_2);
 const du_display = 0.02;
 
 export class FoldableOctahedron {
-  private readonly qa = new Q();
-  private readonly qb = new Q();
-  private readonly qc = new Q();
-  private readonly qd = new Q();
-
   private readonly a = new V3();
   private readonly b = new V3();
   private readonly c = new V3();
@@ -150,29 +145,21 @@ export class FoldableOctahedron {
 
   computePositions(bend: number, shift: number) {
     const {
-      qa, qb, qc, qd, a, b, c, d, ex_a, ex_a_b, ex_a2_c, ex_a_b2, ex_a_b2_d,
+      a, b, c, d, ex_a, ex_a_b, ex_a2_c, ex_a_b2, ex_a_b2_d,
       positions
     } = this;
 
-    const bend45 = - TAU/8 * bend;
-    const bend135 = 3 * bend45;
-    const bendHD = slant * bend;
-
-    Q.RotationAxisToRef(B.Axis.Y, bend45, qa);
-    B.Axis.Z.rotateByQuaternionToRef(qa, a).scaleInPlace(r2);
-
-    Q.RotationAxisToRef(B.Axis.Y, bend135, qb);
-    B.Axis.Z.rotateByQuaternionToRef(qb, b).scaleInPlace(r2);
-
-    Q.RotationAxisToRef(a, bendHD, qc);
-    B.Axis.Y.rotateByQuaternionToRef(qc, c).scaleInPlace(r1_5);
-
-    Q.RotationAxisToRef(b, bendHD, qd);
-    B.Axis.Y.rotateByQuaternionToRef(qd, d).scaleInPlace(r1_5);
-
+    rotateAndStretch(B.Axis.Z, B.Axis.Y, -TAU/8 * bend, r2, a);
     B.Axis.X.addToRef(a, ex_a);
+
+    rotateAndStretch(B.Axis.Z, B.Axis.Y, -3 * TAU/8 * bend, r2, b);
     ex_a.addToRef(b, ex_a_b);
+
+    const bendSlant = slant * bend;
+    rotateAndStretch(B.Axis.Y, a, bendSlant, r1_5, c);
     V3.CenterToRef(B.Axis.X, ex_a, ex_a2_c).addInPlace(c);
+
+    rotateAndStretch(B.Axis.Y, b, bendSlant, r1_5, d);
     V3.CenterToRef(ex_a, ex_a_b, ex_a_b2).addToRef(d, ex_a_b2_d);
 
     const adjX = shift * (1 - shift);
@@ -238,4 +225,12 @@ export class FoldableOctahedron {
     positions[s4a * 3 + 0] += adjX;
     positions[e4a * 3 + 0] += adjX;
   }
+}
+
+const q_tmp = new Q();
+function rotateAndStretch(
+  from: V3, axis: V3, angle: number, scale: number, result: V3,
+) {
+  Q.RotationAxisToRef(axis, angle, q_tmp);
+  from.rotateByQuaternionToRef(q_tmp, result).scaleInPlace(scale);
 }
