@@ -230,5 +230,8 @@ export class FoldableOctahedron {
 const q_tmp = new Q();
 function rotateAndScale(from: V3, axis: V3, angle: number, scale: number, result: V3) {
   Q.RotationAxisToRef(axis, angle, q_tmp);
-  from.rotateByQuaternionToRef(q_tmp, result).scaleInPlace(scale);
+  // applies the quaternion directly:
+  from.applyRotationQuaternionToRef(q_tmp, result).scaleInPlace(scale);
+  // converts the quaternion to a matrix and applies that:
+  // from.rotateByQuaternionToRef(q_tmp, result).scaleInPlace(scale);
 }

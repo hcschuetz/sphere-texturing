@@ -177,7 +177,14 @@ export class FoldableIcosahedron {
     for (const [out, a, b, c] of steps) {
       b.subtractToRef(a, axis);
       B.Quaternion.RotationAxisToRef(axis, bendAngle, quaternion);
-      c.rotateByQuaternionAroundPointToRef(quaternion, a, out);
+      out.copyFrom(c)
+      .subtractInPlace(a)
+      // applies the quaternion directly:
+      .applyRotationQuaternionInPlace(quaternion)
+      .addInPlace(a);
+      // converts the quaternion into a matrix and applies that
+      // (and takes care of the shifting by `a` and back):
+      // c.rotateByQuaternionAroundPointToRef(quaternion, a, out);
     }
     V3.CenterToRef(v3s[m_], v3s[y_], v3s[l_]);
     V3.CenterToRef(v3s[q_], v3s[z_], v3s[r_]);
